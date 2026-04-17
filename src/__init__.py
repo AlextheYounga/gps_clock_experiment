@@ -1,1 +1,1 @@
-"""GNSS experiment source package."""
+"""GNSS experiment source package — model-neutral infrastructure only."""
