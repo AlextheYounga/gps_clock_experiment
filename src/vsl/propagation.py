@@ -2,13 +2,17 @@
 
 Implements the full-vector ballistic propagation model:
 
-  v_sig = c * u_emit + v_sat
+  v_sig = c * u_aim + v_sat
 
 where the emitted signal inherits the satellite's inertial velocity.
-The receiver is modelled as moving with the rotating Earth during signal
-flight, so arrival is solved as an interception problem:
+For fixed satellite/receiver geometry, the flight time is solved exactly
+from the ballistic interception constraint:
 
-  r_sat(t_tx) + v_sig * dt = r_rcv(t_rx)
+  |dr - v_sat * dt|^2 = c^2 * dt^2
+
+with dr = r_rcv - r_sat.
+The receiver is modelled as moving with the rotating Earth during signal
+flight, so dr depends on dt via receiver rotation and is refined iteratively.
 
 No standard constant-c propagation assumption is layered on top.
 No Sagnac add-on correction is used: Earth rotation enters only through
@@ -82,11 +86,10 @@ def compute_predicted_pseudorange(  # noqa: C901, PLR0915
     1. Initial transmit-time estimate using pseudorange / c as a bootstrap.
     2. Apply VSL satellite clock correction (polynomial only, no rel. term).
     3. Get satellite ECEF state (position + velocity) at corrected transmit time.
-    4. Iterate the ballistic flight time:
-         v_sig = c * u_emit + v_sat
-         flight_time = |dr| / (v_sig . u_emit)
-       where dr = r_rcv(t_rx) - r_sat(t_tx) and the receiver is rotated
-       forward by flight_time on each iteration.
+    4. Iterate Earth-rotation geometry and solve flight time exactly each pass:
+         |dr - v_sat * dt|^2 = c^2 * dt^2
+       where dr = r_rcv(t_rx) - r_sat(t_tx) and r_rcv(t_rx) is rotated
+       forward by dt on each iteration.
     5. predicted_pseudorange = flight_time * c - sat_clock_corr_m + clock_bias_m
 
     The receiver measures time-of-flight * c regardless of signal speed, so
@@ -123,38 +126,61 @@ def compute_predicted_pseudorange(  # noqa: C901, PLR0915
     sat_pos = np.array(sat_state.pos_m)
     sat_vel = np.array(sat_state.vel_mps)
 
-    # Step 4: iterate ballistic flight time
+    # Step 4: iterate Earth-rotation geometry with exact ballistic dt solve
     rcv_pos = np.array(user_xyz)
     flight_time = np.linalg.norm(sat_pos - rcv_pos) / c  # initial guess
-    u_emit = np.zeros(3)
+    u_aim = np.zeros(3)
 
     for _ in range(_BALLISTIC_FLIGHT_ITERATIONS):
         rcv_at_rx = np.array(_rotate_receiver_by_dt(user_xyz, flight_time))
         dr = rcv_at_rx - sat_pos
-        dist = float(np.linalg.norm(dr))
-        if dist < 1.0:
-            break
-        u_emit = dr / dist
-
-        # Ballistic signal speed along line of sight
-        v_along_los = c + float(np.dot(sat_vel, u_emit))
-        if v_along_los <= 0.0:
+        d = float(np.dot(dr, dr))
+        if d < 1.0:
             break
 
-        new_ft = dist / v_along_los
+        # Ballistic interception quadratic (for fixed dr geometry):
+        #   |dr - v_sat * dt|^2 = c^2 * dt^2
+        # -> a*dt^2 + b*dt + d = 0
+        #   a = |v_sat|^2 - c^2, b = -2*(dr.v_sat), d = |dr|^2
+        a = float(np.dot(sat_vel, sat_vel) - c * c)
+        b = float(-2.0 * np.dot(dr, sat_vel))
+        discriminant = b * b - 4.0 * a * d
+        if discriminant < 0.0:
+            break
+
+        sqrt_disc = math.sqrt(discriminant)
+        denom = 2.0 * a
+        dt1 = (-b + sqrt_disc) / denom
+        dt2 = (-b - sqrt_disc) / denom
+        positive_roots = [dt for dt in (dt1, dt2) if dt > 0.0 and math.isfinite(dt)]
+        if not positive_roots:
+            break
+
+        new_ft = min(positive_roots)
+
         if abs(new_ft - flight_time) < _FLIGHT_TIME_TOLERANCE_S:
+            flight_time = new_ft
             break
         flight_time = new_ft
+
+    # Emission direction in satellite frame from converged geometry.
+    if flight_time > 0.0:
+        rcv_at_rx = np.array(_rotate_receiver_by_dt(user_xyz, flight_time))
+        dr = rcv_at_rx - sat_pos
+        u_aim = (dr / flight_time - sat_vel) / c
+        u_aim_norm = float(np.linalg.norm(u_aim))
+        if u_aim_norm > 0.0:
+            u_aim = u_aim / u_aim_norm
 
     # Compute receiver rotational velocity in ECEF (omega x r)
     # v_rcv = omega_E x r_rcv  (z-component only for Earth rotation)
     rx, ry = float(user_state[0]), float(user_state[1])
     rcv_vel = np.array([-OMEGA_E_DOT_RAD_S * ry, OMEGA_E_DOT_RAD_S * rx, 0.0])
 
-    # Project velocities onto LOS (u_emit points sat→rcv, so positive = toward rcv)
-    sat_vel_along_los = float(np.dot(sat_vel, u_emit)) if np.any(u_emit) else 0.0
-    # Receiver velocity positive toward satellite means negative along u_emit
-    rcv_vel_along_los = -float(np.dot(rcv_vel, u_emit)) if np.any(u_emit) else 0.0
+    # Project velocities onto ballistic emission direction.
+    sat_vel_along_los = float(np.dot(sat_vel, u_aim)) if np.any(u_aim) else 0.0
+    # Receiver velocity positive toward satellite means negative along u_aim
+    rcv_vel_along_los = -float(np.dot(rcv_vel, u_aim)) if np.any(u_aim) else 0.0
 
     # Step 5: predicted pseudorange expressed via c * flight_time
     predicted_pr = flight_time * c - sat_clock_corr_m + clock_bias_m

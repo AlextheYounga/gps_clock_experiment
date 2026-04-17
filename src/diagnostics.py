@@ -73,6 +73,7 @@ def print_comparison(
 ) -> None:
     """Print a multi-mode comparison summary to stdout."""
     labels = list(results.keys())
+    summaries: dict[str, dict[str, float | int | None]] = {}
 
     print("=" * 72)
     print("GNSS Multi-Mode Comparison")
@@ -81,36 +82,31 @@ def print_comparison(
     for lbl in labels:
         solutions = [s for s in results[lbl] if s is not None]
         n_solved = len(solutions)
-        if n_solved == 0:
-            print(f"\n  [{lbl}] No epochs solved.")
-            continue
+        summary: dict[str, float | int | None] = {
+            "solved": n_solved,
+            "mean_rms": None,
+            "delta_rms": 0.0 if lbl == baseline_label else None,
+            "worse_epochs": None if lbl != baseline_label else 0,
+            "mean_pos_diff": 0.0 if lbl == baseline_label else None,
+            "pos_err": None,
+        }
+        if n_solved > 0:
+            summary["mean_rms"] = sum(s.residual_rms_m for s in solutions) / len(solutions)
+            if truth_ecef is not None:
+                errors = []
+                for s in solutions:
+                    pos = (float(s.state_xyzb_m[0]), float(s.state_xyzb_m[1]), float(s.state_xyzb_m[2]))
+                    errors.append(distance_3d(pos, truth_ecef))
+                summary["pos_err"] = sum(errors) / len(errors)
+        summaries[lbl] = summary
 
-        rms_vals = sorted(s.residual_rms_m for s in solutions)
-        mean_rms = sum(rms_vals) / len(rms_vals)
-        median_rms = rms_vals[len(rms_vals) // 2]
-        p95_rms = rms_vals[min(int(0.95 * len(rms_vals)), len(rms_vals) - 1)]
-        mean_clock = sum(float(s.state_xyzb_m[3]) for s in solutions) / len(solutions)
-
-        print(f"\n  [{lbl}]")
-        print(f"    Epochs solved: {n_solved}/{len(epochs)}")
-        print(f"    Residual RMS (m):  mean={mean_rms:.6f}  median={median_rms:.6f}  95th={p95_rms:.6f}")
-        print(f"    Mean clock bias (m): {mean_clock:.4f}")
-
-        if truth_ecef is not None:
-            errors = []
-            for s in solutions:
-                pos = (float(s.state_xyzb_m[0]), float(s.state_xyzb_m[1]), float(s.state_xyzb_m[2]))
-                errors.append(distance_3d(pos, truth_ecef))
-            print(f"    Mean position error vs truth (m): {sum(errors) / len(errors):.4f}")
-
-    # Pairwise comparisons against baseline
     baseline_sols = results.get(baseline_label, [])
     for lbl in labels:
         if lbl == baseline_label:
             continue
         alt_sols = results[lbl]
         pos_deltas = []
-        clock_deltas = []
+        rms_deltas = []
         rms_worse_count = 0
         both_count = 0
 
@@ -121,17 +117,100 @@ def print_comparison(
             pos_b = (float(s_base.state_xyzb_m[0]), float(s_base.state_xyzb_m[1]), float(s_base.state_xyzb_m[2]))
             pos_a = (float(s_alt.state_xyzb_m[0]), float(s_alt.state_xyzb_m[1]), float(s_alt.state_xyzb_m[2]))
             pos_deltas.append(distance_3d(pos_b, pos_a))
-            clock_deltas.append(float(s_alt.state_xyzb_m[3] - s_base.state_xyzb_m[3]))
+            rms_deltas.append(s_alt.residual_rms_m - s_base.residual_rms_m)
             if s_alt.residual_rms_m > s_base.residual_rms_m:
                 rms_worse_count += 1
 
         if both_count == 0:
             continue
 
-        print(f"\n  [{lbl}] vs [{baseline_label}]  ({both_count} common epochs)")
-        print(f"    Mean |delta position| (m): {sum(pos_deltas) / len(pos_deltas):.6f}")
-        print(f"    Mean delta clock bias (m): {sum(clock_deltas) / len(clock_deltas):.6f}")
-        print(f"    RMS worse in {rms_worse_count}/{both_count} epochs")
+        summaries[lbl]["delta_rms"] = sum(rms_deltas) / len(rms_deltas)
+        summaries[lbl]["worse_epochs"] = rms_worse_count
+        summaries[lbl]["mean_pos_diff"] = sum(pos_deltas) / len(pos_deltas)
+
+    model_width = max(len("Model"), max(len(lbl) for lbl in labels))
+    solved_width = max(len("Solved"), len(f"{len(epochs)}/{len(epochs)}"))
+    mean_rms_width = len("Mean RMS")
+    delta_rms_width = len("Mean RMS Change vs CSL")
+    worse_width = len("Worse Epochs")
+    pos_diff_width = len("Mean 3D Position Difference vs CSL")
+    pos_err_width = len("Pos Err vs Fix")
+    table_width = (
+        model_width
+        + solved_width
+        + mean_rms_width
+        + delta_rms_width
+        + worse_width
+        + pos_diff_width
+        + pos_err_width
+        + 18
+    )
+
+    print("Model Summary")
+    print("-" * table_width)
+    print(
+        f"{'Model':<{model_width}} | "
+        f"{'Solved':>{solved_width}} | "
+        f"{'Mean RMS':>{mean_rms_width}} | "
+        f"{'Mean RMS Change vs CSL':>{delta_rms_width}} | "
+        f"{'Worse Epochs':>{worse_width}} | "
+        f"{'Mean 3D Position Difference vs CSL':>{pos_diff_width}} | "
+        f"{'Pos Err vs Fix':>{pos_err_width}}"
+    )
+    print("-" * table_width)
+    for lbl in labels:
+        summary = summaries[lbl]
+        solved = f"{int(summary['solved'])}/{len(epochs)}"
+        mean_rms = "--" if summary["mean_rms"] is None else f"{float(summary['mean_rms']):.3f}"
+        if lbl == baseline_label:
+            delta_rms = "baseline"
+            worse = "baseline"
+            pos_diff = "baseline"
+        else:
+            delta_rms = "--" if summary["delta_rms"] is None else f"{float(summary['delta_rms']):+.3f}"
+            worse = (
+                "--" if summary["worse_epochs"] is None else f"{int(summary['worse_epochs'])}/{int(summary['solved'])}"
+            )
+            pos_diff = "--" if summary["mean_pos_diff"] is None else f"{float(summary['mean_pos_diff']):.3f}"
+        pos_err = "--" if summary["pos_err"] is None else f"{float(summary['pos_err']):.3f}"
+        print(
+            f"{lbl:<{model_width}} | "
+            f"{solved:>{solved_width}} | "
+            f"{mean_rms:>{mean_rms_width}} | "
+            f"{delta_rms:>{delta_rms_width}} | "
+            f"{worse:>{worse_width}} | "
+            f"{pos_diff:>{pos_diff_width}} | "
+            f"{pos_err:>{pos_err_width}}"
+        )
+
+    ranked = [
+        (lbl, float(summary["mean_rms"])) for lbl, summary in summaries.items() if summary["mean_rms"] is not None
+    ]
+    ranked.sort(key=lambda item: item[1])
+
+    print("\nInterpretation")
+    if ranked:
+        print(f"- Best fit to measurements: {ranked[0][0]}")
+    for lbl in labels:
+        if lbl == baseline_label:
+            continue
+        summary = summaries[lbl]
+        if summary["delta_rms"] is None or summary["worse_epochs"] is None:
+            continue
+        print(
+            f"- {lbl}: mean RMS change vs {baseline_label} = {float(summary['delta_rms']):+.3f} m; "
+            f"worse in {int(summary['worse_epochs'])}/{int(summary['solved'])} epochs."
+        )
+
+    print("\nNotes")
+    print("  - Relative comparisons against CSL are the strongest signal in this experiment.")
+    if truth_ecef is not None:
+        print("  - 'Pos Err vs Fix' uses the phone logger Fix as a coarse external reference, not survey truth.")
+    if summaries.get(baseline_label, {}).get("mean_rms") is not None:
+        print(
+            "  - Large absolute residual RMS can be dominated by measurement-model limitations "
+            "(timing heuristics, atmosphere, multipath), even when model deltas are meaningful."
+        )
 
     print()
 
