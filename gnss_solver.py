@@ -1,7 +1,9 @@
+"""Weighted least-squares GNSS solver."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -13,14 +15,18 @@ from gnss_physics import (
     calculate_satellite_position,
 )
 
-
 LEAST_SQUARE_TOLERANCE_METERS = 4.0e-8
 MAXIMUM_NUMBER_OF_LEAST_SQUARE_ITERATIONS = 100
 RESIDUAL_TO_REPEAT_LEAST_SQUARE_METERS = 20.0
+MINIMUM_USABLE_SATELLITES = 4
+WEEK_SECONDS = 604800.0
+HALF_WEEK_SECONDS = 302400.0
 
 
 @dataclass(frozen=True)
 class EpochSolution:
+    """Solved receiver state for one epoch."""
+
     state_xyzb_m: np.ndarray
     residuals_m: np.ndarray
     satellite_ids: list[int]
@@ -28,6 +34,8 @@ class EpochSolution:
 
 
 class WeightedLeastSquaresSolver:
+    """Solve receiver position and clock bias from pseudoranges."""
+
     def __init__(self, *, enable_relativity: bool):
         self.enable_relativity = enable_relativity
 
@@ -36,8 +44,9 @@ class WeightedLeastSquaresSolver:
         epoch: EpochMeasurements,
         nav_by_prn: dict[int, list[Ephemeris]],
     ) -> EpochSolution:
+        """Solve one GNSS epoch with iterative weighted least squares."""
         observations = [obs for obs in epoch.observations if obs.svid in nav_by_prn]
-        if len(observations) < 4:
+        if len(observations) < MINIMUM_USABLE_SATELLITES:
             raise RuntimeError("Need at least 4 usable satellites")
 
         state = np.array([0.0, 0.0, 0.0, 0.0], dtype=float)
@@ -51,15 +60,15 @@ class WeightedLeastSquaresSolver:
                 state,
             )
 
-            if len(observations) <= 4:
+            if len(observations) <= MINIMUM_USABLE_SATELLITES:
                 break
 
             keep_mask = np.abs(residuals) <= RESIDUAL_TO_REPEAT_LEAST_SQUARE_METERS
             if np.all(keep_mask):
                 break
-            if int(np.sum(keep_mask)) < 4:
+            if int(np.sum(keep_mask)) < MINIMUM_USABLE_SATELLITES:
                 break
-            observations = [obs for obs, keep in zip(observations, keep_mask) if keep]
+            observations = [obs for obs, keep in zip(observations, keep_mask, strict=False) if keep]
 
         residual_rms_m = math.sqrt(float(np.mean(residuals * residuals)))
         return EpochSolution(
@@ -196,11 +205,11 @@ class WeightedLeastSquaresSolver:
         best: Ephemeris | None = None
         best_score = float("inf")
         for eph in candidates:
-            dt = (week - eph.week) * 604800.0 + (tow_s - eph.toe)
-            if dt > 302400.0:
-                dt -= 604800.0
-            elif dt < -302400.0:
-                dt += 604800.0
+            dt = (week - eph.week) * WEEK_SECONDS + (tow_s - eph.toe)
+            if dt > HALF_WEEK_SECONDS:
+                dt -= WEEK_SECONDS
+            elif dt < -HALF_WEEK_SECONDS:
+                dt += WEEK_SECONDS
             score = abs(dt)
             if score < best_score:
                 best_score = score

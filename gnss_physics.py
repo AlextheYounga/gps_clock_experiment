@@ -1,10 +1,11 @@
+"""GNSS broadcast ephemeris physics helpers."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 
 from gnss_parser import Ephemeris
-
 
 SPEED_OF_LIGHT_MPS = 299792458.0
 MU_M3_S2 = 3.986005e14
@@ -18,6 +19,8 @@ SAT_POSITION_ITERATIONS = 5
 
 @dataclass(frozen=True)
 class SatClockCorrection:
+    """Clock correction and intermediate values for one satellite."""
+
     satellite_clock_correction_m: float
     eccentric_anomaly_rad: float
     time_from_ref_epoch_s: float
@@ -25,6 +28,7 @@ class SatClockCorrection:
 
 
 def fix_week_rollover(time_s: float) -> float:
+    """Wrap a time delta to the GPS week interval."""
     if time_s > SECONDS_IN_WEEK / 2.0:
         return time_s - SECONDS_IN_WEEK
     if time_s < -SECONDS_IN_WEEK / 2.0:
@@ -39,6 +43,7 @@ def calculate_clock_correction(
     *,
     enable_relativity: bool,
 ) -> SatClockCorrection:
+    """Compute the satellite clock correction at transmit time."""
     a = ephemeris.root_a * ephemeris.root_a
     n0 = math.sqrt(MU_M3_S2 / (a * a * a))
     n = n0 + ephemeris.delta_n
@@ -105,6 +110,7 @@ def calculate_corrected_transmit_tow_and_week(
     *,
     enable_relativity: bool,
 ) -> tuple[float, int]:
+    """Correct a transmit TOW and GPS week for satellite clock bias."""
     receiver_gps_tow_at_tx_s = receiver_gps_tow_at_reception_s - pseudorange_m / SPEED_OF_LIGHT_MPS
 
     week = receiver_gps_week
@@ -198,6 +204,7 @@ def calculate_satellite_position(
     *,
     enable_relativity: bool,
 ) -> tuple[float, float, float]:
+    """Compute ECEF satellite position by iterating the range estimate."""
     user_sat_range_m = 0.070 * SPEED_OF_LIGHT_MPS
     sat_x_m = sat_y_m = sat_z_m = 0.0
 
