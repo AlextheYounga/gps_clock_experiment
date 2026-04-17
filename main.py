@@ -15,9 +15,7 @@ WGS84_A = 6378137.0
 WGS84_E2 = 6.69437999014e-3
 
 
-def lla_to_ecef(
-    latitude_deg: float, longitude_deg: float, altitude_m: float
-) -> tuple[float, float, float]:
+def lla_to_ecef(latitude_deg: float, longitude_deg: float, altitude_m: float) -> tuple[float, float, float]:
     lat = math.radians(latitude_deg)
     lon = math.radians(longitude_deg)
     sin_lat = math.sin(lat)
@@ -107,9 +105,7 @@ def main() -> None:
             float(sol_no_rel.state_xyzb_m[2]),
         )
         position_delta_m.append(distance_3d(pos_rel, pos_no_rel))
-        clock_delta_m.append(
-            float(sol_no_rel.state_xyzb_m[3] - sol_rel.state_xyzb_m[3])
-        )
+        clock_delta_m.append(float(sol_no_rel.state_xyzb_m[3] - sol_rel.state_xyzb_m[3]))
 
         if sol_no_rel.residual_rms_m > sol_rel.residual_rms_m:
             rms_increase_count += 1
@@ -121,15 +117,11 @@ def main() -> None:
         # Estimate common-mode missing relativity error in pseudorange space.
         # This is the part that is most easily absorbed by receiver clock bias.
         rel_terms = []
-        receiver_tow_corrected = (
-            epoch.receiver_tow_s - sol_no_rel.state_xyzb_m[3] / 299792458.0
-        )
+        receiver_tow_corrected = epoch.receiver_tow_s - sol_no_rel.state_xyzb_m[3] / 299792458.0
         for obs in epoch.observations:
             if obs.svid not in nav_by_prn:
                 continue
-            eph = _select_ephemeris(
-                nav_by_prn[obs.svid], receiver_tow_corrected, epoch.gps_week
-            )
+            eph = _select_ephemeris(nav_by_prn[obs.svid], receiver_tow_corrected, epoch.gps_week)
             if eph is None:
                 continue
             tx_tow, tx_week = calculate_corrected_transmit_tow_and_week(
@@ -178,11 +170,7 @@ def main() -> None:
 
     if common_mode_rel_missing_m:
         common_mode = sum(common_mode_rel_missing_m) / len(common_mode_rel_missing_m)
-        absorbed_fraction = (
-            abs(mean_clock_delta) / abs(common_mode)
-            if abs(common_mode) > 1e-9
-            else float("nan")
-        )
+        absorbed_fraction = abs(mean_clock_delta) / abs(common_mode) if abs(common_mode) > 1e-9 else float("nan")
         print(f"  mean missing-relativity common mode (m): {common_mode:.6f}")
         print(f"  clock absorption ratio (|dClock|/|common|): {absorbed_fraction:.6f}")
 

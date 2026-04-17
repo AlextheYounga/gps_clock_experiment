@@ -133,9 +133,7 @@ class WeightedLeastSquaresSolver:
         receiver_tow_corrected_s = receiver_tow_s - state[3] / SPEED_OF_LIGHT_MPS
 
         for obs in observations:
-            eph = self._select_ephemeris(
-                nav_by_prn[obs.svid], receiver_tow_corrected_s, gps_week
-            )
+            eph = self._select_ephemeris(nav_by_prn[obs.svid], receiver_tow_corrected_s, gps_week)
 
             tx_tow_s, tx_week = calculate_corrected_transmit_tow_and_week(
                 eph,

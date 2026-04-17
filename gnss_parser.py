@@ -160,11 +160,7 @@ def _measurement_sigma_from_cn0(cn0_dbhz: float) -> float:
     return (
         SPEED_OF_LIGHT_MPS
         * GPS_CHIP_WIDTH_T_C_SEC
-        * (
-            GPS_CORRELATOR_SPACING_IN_CHIPS
-            / (4.0 * GPS_DLL_AVERAGING_TIME_SEC * signal_to_noise_ratio_linear)
-        )
-        ** 0.5
+        * (GPS_CORRELATOR_SPACING_IN_CHIPS / (4.0 * GPS_DLL_AVERAGING_TIME_SEC * signal_to_noise_ratio_linear)) ** 0.5
     )
 
 
@@ -226,11 +222,7 @@ def parse_gnss_logger_file(
             continue
 
         tow_decoded = (state & (1 << tow_decoded_state_bit)) != 0
-        if (
-            constellation != constellation_type_gps
-            or (not tow_decoded)
-            or cn0 < min_cn0_dbhz
-        ):
+        if constellation != constellation_type_gps or (not tow_decoded) or cn0 < min_cn0_dbhz:
             continue
 
         epochs_raw.setdefault(time_nanos, []).append(row)
@@ -259,9 +251,7 @@ def parse_gnss_logger_file(
                 continue
 
             delta_i_ns = largest_tow_ns - sv_tow_ns
-            pseudorange_m = (
-                AVERAGE_TRAVEL_TIME_SECONDS + delta_i_ns * SECONDS_PER_NANO
-            ) * SPEED_OF_LIGHT_MPS
+            pseudorange_m = (AVERAGE_TRAVEL_TIME_SECONDS + delta_i_ns * SECONDS_PER_NANO) * SPEED_OF_LIGHT_MPS
             sigma_m = _measurement_sigma_from_cn0(cn0)
             observations.append(
                 SatelliteObservation(
