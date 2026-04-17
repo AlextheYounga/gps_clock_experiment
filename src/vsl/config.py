@@ -21,6 +21,7 @@ class VslConfig:
 
     @property
     def label(self) -> str:
+        """Return the human-readable solver label."""
         return f"VSL/{self.variant.name}"
 
 

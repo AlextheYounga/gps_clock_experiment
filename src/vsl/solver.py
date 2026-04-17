@@ -8,7 +8,6 @@ from dataclasses import dataclass
 import numpy as np
 
 from src.models import Ephemeris, EpochMeasurements, SatelliteObservation
-
 from src.vsl.config import VslConfig
 from src.vsl.observation_model import compute_residuals, geometry_matrix
 from src.vsl.propagation import BallisticObsDebug

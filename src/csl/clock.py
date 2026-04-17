@@ -13,9 +13,8 @@ import math
 from dataclasses import dataclass
 
 from src.constants import F_RELATIVISTIC, MU_M3_S2, SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS
-from src.models import Ephemeris
-
 from src.csl.config import CslConfig
+from src.models import Ephemeris
 
 _ACCURACY_TOLERANCE = 1.0e-11
 _MAX_ITERATIONS = 100

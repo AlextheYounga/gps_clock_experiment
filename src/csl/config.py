@@ -24,10 +24,12 @@ class CslConfig:
 
     @property
     def enable_relativistic_eccentricity(self) -> bool:
+        """Return whether the relativistic eccentricity term is enabled."""
         return self.clock_model == ClockModel.STANDARD
 
     @property
     def label(self) -> str:
+        """Return the human-readable solver label."""
         return f"CSL/{self.clock_model.name}"
 
 

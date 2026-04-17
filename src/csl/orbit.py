@@ -10,11 +10,10 @@ from __future__ import annotations
 
 import math
 
-from src.constants import MU_M3_S2, OMEGA_E_DOT_RAD_S, SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS
-from src.models import Ephemeris
-
+from src.constants import OMEGA_E_DOT_RAD_S, SPEED_OF_LIGHT_MPS
 from src.csl.clock import SatClockCorrection, calculate_clock_correction
 from src.csl.config import CslConfig
+from src.models import Ephemeris
 
 _SAT_POSITION_ITERATIONS = 5
 

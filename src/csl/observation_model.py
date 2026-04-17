@@ -12,15 +12,14 @@ import math
 import numpy as np
 
 from src.constants import SPEED_OF_LIGHT_MPS
-from src.ephemeris_selection import select_ephemeris
-from src.models import Ephemeris, SatelliteObservation
-
 from src.csl.clock import calculate_clock_correction, calculate_corrected_transmit_tow_and_week
 from src.csl.config import CslConfig
 from src.csl.orbit import calculate_satellite_position
+from src.ephemeris_selection import select_ephemeris
+from src.models import Ephemeris, SatelliteObservation
 
 
-def compute_residuals(
+def compute_residuals(  # noqa: PLR0913
     observations: list[SatelliteObservation],
     receiver_tow_s: float,
     gps_week: int,

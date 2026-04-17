@@ -18,9 +18,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from src.constants import MU_M3_S2, OMEGA_E_DOT_RAD_S, SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS
+from src.constants import MU_M3_S2, OMEGA_E_DOT_RAD_S
 from src.models import Ephemeris
-
 from src.vsl.clock import SatClockCorrection, calculate_clock_correction
 
 _SAT_POSITION_ITERATIONS = 5
@@ -97,7 +96,7 @@ def calculate_satellite_position(
     return sx, sy, sz
 
 
-def calculate_satellite_state(
+def calculate_satellite_state(  # noqa: PLR0915
     ephemeris: Ephemeris,
     corrected_tow_s: float,
     week: int,

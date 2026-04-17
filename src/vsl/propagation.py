@@ -24,11 +24,11 @@ import numpy as np
 
 from src.constants import OMEGA_E_DOT_RAD_S, SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS
 from src.models import Ephemeris
-
 from src.vsl.clock import calculate_clock_correction
 from src.vsl.orbit import calculate_satellite_state
 
 _BALLISTIC_FLIGHT_ITERATIONS = 10
+_FLIGHT_TIME_TOLERANCE_S = 1.0e-14
 
 
 @dataclass(frozen=True)
@@ -67,7 +67,7 @@ def _rotate_receiver_by_dt(
     return x, y, z
 
 
-def compute_predicted_pseudorange(
+def compute_predicted_pseudorange(  # noqa: C901, PLR0915
     ephemeris: Ephemeris,
     receiver_tow_corrected_s: float,
     gps_week: int,
@@ -142,13 +142,13 @@ def compute_predicted_pseudorange(
             break
 
         new_ft = dist / v_along_los
-        if abs(new_ft - flight_time) < 1e-14:
+        if abs(new_ft - flight_time) < _FLIGHT_TIME_TOLERANCE_S:
             break
         flight_time = new_ft
 
     # Compute receiver rotational velocity in ECEF (omega x r)
     # v_rcv = omega_E x r_rcv  (z-component only for Earth rotation)
-    rx, ry, rz = float(user_state[0]), float(user_state[1]), float(user_state[2])
+    rx, ry = float(user_state[0]), float(user_state[1])
     rcv_vel = np.array([-OMEGA_E_DOT_RAD_S * ry, OMEGA_E_DOT_RAD_S * rx, 0.0])
 
     # Project velocities onto LOS (u_emit points sat→rcv, so positive = toward rcv)

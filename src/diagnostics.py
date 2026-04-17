@@ -1,3 +1,4 @@
+# ruff: noqa: C901, PLR0915
 """Reporting and CSV diagnostics — model-neutral."""
 
 from __future__ import annotations
@@ -10,7 +11,6 @@ from src.coordinates import distance_3d
 from src.models import EpochMeasurements
 
 if TYPE_CHECKING:
-    from src.vsl.propagation import BallisticObsDebug
     from src.vsl.solver import EpochSolution as VslEpochSolution
 
 
@@ -24,7 +24,7 @@ def write_epoch_csv(
     labels = list(results.keys())
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(path, "w", newline="") as f:
+    with path.open("w", newline="") as f:
         writer = csv.writer(f)
         header = ["epoch_idx", "receiver_tow"]
         for lbl in labels:
@@ -148,7 +148,7 @@ def write_observation_csv(
     """
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(path, "w", newline="") as f:
+    with path.open("w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(
             [

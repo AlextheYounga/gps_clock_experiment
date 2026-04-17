@@ -16,17 +16,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from src.coordinates import lla_to_ecef
+from src.csl.config import NO_RELATIVITY_CONFIG, STANDARD_CONFIG
+from src.csl.solver import EpochSolution as CslSolution, WeightedLeastSquaresSolver as CslSolver
 from src.diagnostics import print_comparison, write_epoch_csv, write_observation_csv
 from src.measurement_parser import parse_gnss_logger_file
-from src.models import EpochMeasurements, Ephemeris
+from src.models import Ephemeris, EpochMeasurements
 from src.nav_parser import parse_rinex_nav_file
-
-from src.csl.config import NO_RELATIVITY_CONFIG, STANDARD_CONFIG
-from src.csl.solver import EpochSolution as CslSolution
-from src.csl.solver import WeightedLeastSquaresSolver as CslSolver
 from src.vsl.config import BALLISTIC_FULL_VECTOR_CONFIG
-from src.vsl.solver import EpochSolution as VslSolution
-from src.vsl.solver import WeightedLeastSquaresSolver as VslSolver
+from src.vsl.solver import EpochSolution as VslSolution, WeightedLeastSquaresSolver as VslSolver
 
 
 @dataclass(frozen=True)
@@ -132,10 +129,7 @@ def main() -> None:
     output_dir = root / "output"
     all_datasets = _datasets(root)
 
-    if args.dataset is not None:
-        datasets_to_run = [all_datasets[args.dataset - 1]]
-    else:
-        datasets_to_run = all_datasets
+    datasets_to_run = [all_datasets[args.dataset - 1]] if args.dataset is not None else all_datasets
 
     for ds in datasets_to_run:
         _run_dataset(ds, output_dir)

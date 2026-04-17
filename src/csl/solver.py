@@ -7,10 +7,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from src.models import Ephemeris, EpochMeasurements, SatelliteObservation
-
 from src.csl.config import CslConfig
 from src.csl.observation_model import compute_residuals, geometry_matrix
+from src.models import Ephemeris, EpochMeasurements, SatelliteObservation
 
 _LEAST_SQUARE_TOLERANCE_M = 4.0e-8
 _MAX_ITERATIONS = 100
