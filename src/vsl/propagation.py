@@ -25,8 +25,8 @@ import numpy as np
 from src.constants import OMEGA_E_DOT_RAD_S, SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS
 from src.models import Ephemeris
 
-from vsl.clock import calculate_clock_correction
-from vsl.orbit import calculate_satellite_state
+from src.vsl.clock import calculate_clock_correction
+from src.vsl.orbit import calculate_satellite_state
 
 _BALLISTIC_FLIGHT_ITERATIONS = 10
 

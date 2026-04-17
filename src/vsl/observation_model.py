@@ -19,9 +19,9 @@ from src.constants import SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS
 from src.ephemeris_selection import select_ephemeris
 from src.models import Ephemeris, SatelliteObservation
 
-from vsl.clock import calculate_clock_correction
-from vsl.orbit import calculate_satellite_position
-from vsl.propagation import BallisticObsDebug, compute_predicted_pseudorange
+from src.vsl.clock import calculate_clock_correction
+from src.vsl.orbit import calculate_satellite_position
+from src.vsl.propagation import BallisticObsDebug, compute_predicted_pseudorange
 
 
 def compute_residuals(

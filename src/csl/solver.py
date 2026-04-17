@@ -1,4 +1,4 @@
-"""VSL weighted least-squares solver."""
+"""CSL weighted least-squares solver."""
 
 from __future__ import annotations
 
@@ -9,9 +9,8 @@ import numpy as np
 
 from src.models import Ephemeris, EpochMeasurements, SatelliteObservation
 
-from vsl.config import VslConfig
-from vsl.observation_model import compute_residuals, geometry_matrix
-from vsl.propagation import BallisticObsDebug
+from src.csl.config import CslConfig
+from src.csl.observation_model import compute_residuals, geometry_matrix
 
 _LEAST_SQUARE_TOLERANCE_M = 4.0e-8
 _MAX_ITERATIONS = 100
@@ -27,13 +26,12 @@ class EpochSolution:
     residuals_m: np.ndarray
     satellite_ids: list[int]
     residual_rms_m: float
-    obs_debug: list[BallisticObsDebug]
 
 
 class WeightedLeastSquaresSolver:
-    """VSL position solver using the ballistic full-vector observation model."""
+    """CSL position solver using constant-speed-light observation model."""
 
-    def __init__(self, config: VslConfig) -> None:
+    def __init__(self, config: CslConfig) -> None:
         self.config = config
 
     def solve_epoch(
@@ -49,7 +47,7 @@ class WeightedLeastSquaresSolver:
         state = np.zeros(4, dtype=float)
 
         while True:
-            state, residuals, sat_ids, _, obs_debug = self._run_iterative_wls(
+            state, residuals, sat_ids, _ = self._run_iterative_wls(
                 observations,
                 epoch.receiver_tow_s,
                 epoch.gps_week,
@@ -71,7 +69,6 @@ class WeightedLeastSquaresSolver:
             residuals_m=residuals,
             satellite_ids=sat_ids,
             residual_rms_m=rms,
-            obs_debug=obs_debug,
         )
 
     def _run_iterative_wls(
@@ -81,7 +78,7 @@ class WeightedLeastSquaresSolver:
         gps_week: int,
         nav_by_prn: dict[int, list[Ephemeris]],
         initial_state: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray, list[int], list[tuple[float, float, float]], list[BallisticObsDebug]]:
+    ) -> tuple[np.ndarray, np.ndarray, list[int], list[tuple[float, float, float]]]:
         state = initial_state.copy()
         delta = np.full(4, np.inf)
         iterations = 0
@@ -89,18 +86,18 @@ class WeightedLeastSquaresSolver:
         residuals = np.zeros(len(observations))
         sat_positions: list[tuple[float, float, float]] = []
         sat_ids: list[int] = []
-        obs_debug: list[BallisticObsDebug] = []
 
         while float(np.sum(np.abs(delta[:3]))) >= _LEAST_SQUARE_TOLERANCE_M:
             if iterations >= _MAX_ITERATIONS:
                 raise RuntimeError("Maximum least-square iterations reached")
 
-            residuals, sat_positions, sat_ids, obs_debug = compute_residuals(
+            residuals, sat_positions, sat_ids = compute_residuals(
                 observations,
                 receiver_tow_s,
                 gps_week,
                 nav_by_prn,
                 state,
+                self.config,
             )
 
             h = geometry_matrix(sat_positions, state)
@@ -111,11 +108,12 @@ class WeightedLeastSquaresSolver:
             state += delta
             iterations += 1
 
-        residuals, sat_positions, sat_ids, obs_debug = compute_residuals(
+        residuals, sat_positions, sat_ids = compute_residuals(
             observations,
             receiver_tow_s,
             gps_week,
             nav_by_prn,
             state,
+            self.config,
         )
-        return state, residuals, sat_ids, sat_positions, obs_debug
+        return state, residuals, sat_ids, sat_positions

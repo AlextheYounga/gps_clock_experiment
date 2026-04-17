@@ -15,9 +15,9 @@ from src.constants import SPEED_OF_LIGHT_MPS
 from src.ephemeris_selection import select_ephemeris
 from src.models import Ephemeris, SatelliteObservation
 
-from csl.clock import calculate_clock_correction, calculate_corrected_transmit_tow_and_week
-from csl.config import CslConfig
-from csl.orbit import calculate_satellite_position
+from src.csl.clock import calculate_clock_correction, calculate_corrected_transmit_tow_and_week
+from src.csl.config import CslConfig
+from src.csl.orbit import calculate_satellite_position
 
 
 def compute_residuals(

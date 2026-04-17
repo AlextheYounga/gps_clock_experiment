@@ -13,8 +13,8 @@ import math
 from src.constants import MU_M3_S2, OMEGA_E_DOT_RAD_S, SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS
 from src.models import Ephemeris
 
-from csl.clock import SatClockCorrection, calculate_clock_correction
-from csl.config import CslConfig
+from src.csl.clock import SatClockCorrection, calculate_clock_correction
+from src.csl.config import CslConfig
 
 _SAT_POSITION_ITERATIONS = 5
 

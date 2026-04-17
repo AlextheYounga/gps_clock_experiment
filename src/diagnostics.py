@@ -10,8 +10,8 @@ from src.coordinates import distance_3d
 from src.models import EpochMeasurements
 
 if TYPE_CHECKING:
-    from vsl.propagation import BallisticObsDebug
-    from vsl.solver import EpochSolution as VslEpochSolution
+    from src.vsl.propagation import BallisticObsDebug
+    from src.vsl.solver import EpochSolution as VslEpochSolution
 
 
 def write_epoch_csv(

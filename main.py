@@ -21,12 +21,12 @@ from src.measurement_parser import parse_gnss_logger_file
 from src.models import EpochMeasurements, Ephemeris
 from src.nav_parser import parse_rinex_nav_file
 
-from csl.config import NO_RELATIVITY_CONFIG, STANDARD_CONFIG
-from csl.solver import EpochSolution as CslSolution
-from csl.solver import WeightedLeastSquaresSolver as CslSolver
-from vsl.config import BALLISTIC_FULL_VECTOR_CONFIG
-from vsl.solver import EpochSolution as VslSolution
-from vsl.solver import WeightedLeastSquaresSolver as VslSolver
+from src.csl.config import NO_RELATIVITY_CONFIG, STANDARD_CONFIG
+from src.csl.solver import EpochSolution as CslSolution
+from src.csl.solver import WeightedLeastSquaresSolver as CslSolver
+from src.vsl.config import BALLISTIC_FULL_VECTOR_CONFIG
+from src.vsl.solver import EpochSolution as VslSolution
+from src.vsl.solver import WeightedLeastSquaresSolver as VslSolver
 
 
 @dataclass(frozen=True)
