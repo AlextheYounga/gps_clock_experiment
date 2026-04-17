@@ -233,6 +233,3 @@ __trash__
 *.swp
 *.swo
 
-# Custom
-docs/references
-
