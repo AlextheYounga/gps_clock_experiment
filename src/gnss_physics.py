@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from gnss_parser import Ephemeris
+from src.gnss_parser import Ephemeris
 
 SPEED_OF_LIGHT_MPS = 299792458.0
 MU_M3_S2 = 3.986005e14

@@ -5,12 +5,12 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
-from gnss_parser import parse_gnss_logger_file, parse_rinex_nav_file
-from gnss_physics import (
+from src.gnss_parser import parse_gnss_logger_file, parse_rinex_nav_file
+from src.gnss_physics import (
     calculate_clock_correction,
     calculate_corrected_transmit_tow_and_week,
 )
-from gnss_solver import WeightedLeastSquaresSolver
+from src.gnss_solver import WeightedLeastSquaresSolver
 
 WGS84_A = 6378137.0
 WGS84_E2 = 6.69437999014e-3

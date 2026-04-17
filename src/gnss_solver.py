@@ -7,8 +7,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from gnss_parser import Ephemeris, EpochMeasurements, SatelliteObservation
-from gnss_physics import (
+from src.gnss_parser import Ephemeris, EpochMeasurements, SatelliteObservation
+from src.gnss_physics import (
     SPEED_OF_LIGHT_MPS,
     calculate_clock_correction,
     calculate_corrected_transmit_tow_and_week,
