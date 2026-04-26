@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import math
 
-from src.constants import OMEGA_E_DOT_RAD_S, SPEED_OF_LIGHT_MPS
 from src.csl.clock import SatClockCorrection, calculate_clock_correction
 from src.csl.config import CslConfig
+from src.csl.corrections import sagnac_style_orbit_longitude_rad
+from src.constants import SPEED_OF_LIGHT_MPS
 from src.models import Ephemeris
 
 _SAT_POSITION_ITERATIONS = 5
@@ -45,11 +46,7 @@ def _satellite_position_inner(
     x_orb = r * math.cos(u)
     y_orb = r * math.sin(u)
 
-    omega_k = (
-        ephemeris.omega0
-        + (ephemeris.omega_dot - OMEGA_E_DOT_RAD_S) * tk_s
-        - OMEGA_E_DOT_RAD_S * (ephemeris.toe + user_sat_range_m / SPEED_OF_LIGHT_MPS)
-    )
+    omega_k = sagnac_style_orbit_longitude_rad(ephemeris, tk_s, user_sat_range_m)
 
     cos_ok = math.cos(omega_k)
     sin_ok = math.sin(omega_k)

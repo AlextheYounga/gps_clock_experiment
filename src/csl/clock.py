@@ -12,8 +12,9 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from src.constants import F_RELATIVISTIC, MU_M3_S2, SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS
+from src.constants import MU_M3_S2, SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS
 from src.csl.config import CslConfig
+from src.csl.corrections import polynomial_clock_correction_s, relativistic_eccentricity_correction_s
 from src.models import Ephemeris
 
 _ACCURACY_TOLERANCE = 1.0e-11
@@ -54,7 +55,7 @@ def calculate_clock_correction(
 
     tc_s = _fix_week_rollover(tx_s - (ephemeris.week * SECONDS_IN_WEEK + ephemeris.toc))
 
-    init_corr_s = ephemeris.af0 + ephemeris.af1 * tc_s + ephemeris.af2 * tc_s * tc_s - ephemeris.tgd
+    init_corr_s = polynomial_clock_correction_s(ephemeris, tc_s)
     sat_corr_s = init_corr_s
 
     counter = 0
@@ -78,7 +79,7 @@ def calculate_clock_correction(
 
         rel_corr_s = 0.0
         if config.enable_relativistic_eccentricity:
-            rel_corr_s = F_RELATIVISTIC * ephemeris.e * ephemeris.root_a * math.sin(ecc_anom)
+            rel_corr_s = relativistic_eccentricity_correction_s(ephemeris, ecc_anom)
 
         new_corr_s = init_corr_s + rel_corr_s
         change = abs(sat_corr_s - new_corr_s)
