@@ -15,7 +15,7 @@ import math
 
 import numpy as np
 
-from src.constants import SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS
+from src.constants import SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS as EMISSIONS_SPEED_OF_LIGHT_MPS
 from src.ephemeris_selection import select_ephemeris
 from src.models import Ephemeris, SatelliteObservation
 from src.vsl.clock import calculate_clock_correction
@@ -39,8 +39,8 @@ def compute_residuals(
     sat_ids: list[int] = []
     obs_debug: list[BallisticObsDebug] = []
 
-    c = SPEED_OF_LIGHT_MPS
-    tow_corrected = receiver_tow_s - state[3] / c
+    c_emit = EMISSIONS_SPEED_OF_LIGHT_MPS
+    tow_corrected = receiver_tow_s - state[3] / c_emit
     user_pos = (float(state[0]), float(state[1]), float(state[2]))
 
     for obs in observations:
@@ -59,7 +59,7 @@ def compute_residuals(
 
         # Satellite position for H-matrix (VSL orbit, no Sagnac)
         # Use initial transmit-time estimate consistent with observation
-        tow_tx = tow_corrected - obs.pseudorange_m / c
+        tow_tx = tow_corrected - obs.pseudorange_m / c_emit
         week_tx = gps_week
         if tow_tx < 0.0:
             tow_tx += SECONDS_IN_WEEK
@@ -69,7 +69,7 @@ def compute_residuals(
             week_tx += 1
 
         clock_corr = calculate_clock_correction(eph, tow_tx, week_tx)
-        corrected_tx = tow_tx + clock_corr.satellite_clock_correction_m / c
+        corrected_tx = tow_tx + clock_corr.satellite_clock_correction_m / c_emit
         if corrected_tx < 0.0:
             corrected_tx += SECONDS_IN_WEEK
             week_tx -= 1

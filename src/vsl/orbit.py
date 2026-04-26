@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from src.constants import MU_M3_S2, OMEGA_E_DOT_RAD_S
 from src.models import Ephemeris
 from src.vsl.clock import SatClockCorrection, calculate_clock_correction
+from src.vsl.corrections import ballistic_orbit_longitude_rad
 
 _SAT_POSITION_ITERATIONS = 5
 
@@ -64,7 +65,7 @@ def _satellite_position_no_sagnac(
     y_orb = r * math.sin(u)
 
     # Longitude of ascending node — no user_sat_range/c Sagnac term
-    omega_k = ephemeris.omega0 + (ephemeris.omega_dot - OMEGA_E_DOT_RAD_S) * tk_s - OMEGA_E_DOT_RAD_S * ephemeris.toe
+    omega_k = ballistic_orbit_longitude_rad(ephemeris, tk_s)
 
     cos_ok = math.cos(omega_k)
     sin_ok = math.sin(omega_k)
@@ -145,7 +146,7 @@ def calculate_satellite_state(  # noqa: PLR0915
     x_orb_dot = r_dot * math.cos(u_corr) - r * u_dot * math.sin(u_corr)
     y_orb_dot = r_dot * math.sin(u_corr) + r * u_dot * math.cos(u_corr)
 
-    omega_k = ephemeris.omega0 + (ephemeris.omega_dot - OMEGA_E_DOT_RAD_S) * tk_s - OMEGA_E_DOT_RAD_S * ephemeris.toe
+    omega_k = ballistic_orbit_longitude_rad(ephemeris, tk_s)
     omega_k_dot = ephemeris.omega_dot - OMEGA_E_DOT_RAD_S
 
     sin_ok = math.sin(omega_k)

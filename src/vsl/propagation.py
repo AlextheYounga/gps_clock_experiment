@@ -2,13 +2,13 @@
 
 Implements the full-vector ballistic propagation model:
 
-  v_sig = c * u_aim + v_sat
+  v_sig = c_emit * u_aim + v_sat
 
 where the emitted signal inherits the satellite's inertial velocity.
 For fixed satellite/receiver geometry, the flight time is solved exactly
 from the ballistic interception constraint:
 
-  |dr - v_sat * dt|^2 = c^2 * dt^2
+  |dr - v_sat * dt|^2 = c_emit^2 * dt^2
 
 with dr = r_rcv - r_sat.
 The receiver is modelled as moving with the rotating Earth during signal
@@ -26,7 +26,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from src.constants import OMEGA_E_DOT_RAD_S, SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS
+from src.constants import OMEGA_E_DOT_RAD_S, SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS as EMISSIONS_SPEED_OF_LIGHT_MPS
 from src.models import Ephemeris
 from src.vsl.clock import calculate_clock_correction
 from src.vsl.orbit import calculate_satellite_state
@@ -84,23 +84,23 @@ def compute_predicted_pseudorange(  # noqa: C901, PLR0915
 
     Algorithm:
     1. Initial transmit-time estimate using pseudorange / c as a bootstrap.
-    2. Apply VSL satellite clock correction (polynomial only, no rel. term).
+    2. Apply VSL satellite clock correction (polynomial + gravity-only periodic term).
     3. Get satellite ECEF state (position + velocity) at corrected transmit time.
     4. Iterate Earth-rotation geometry and solve flight time exactly each pass:
-         |dr - v_sat * dt|^2 = c^2 * dt^2
+         |dr - v_sat * dt|^2 = c_emit^2 * dt^2
        where dr = r_rcv(t_rx) - r_sat(t_tx) and r_rcv(t_rx) is rotated
        forward by dt on each iteration.
-    5. predicted_pseudorange = flight_time * c - sat_clock_corr_m + clock_bias_m
+    5. predicted_pseudorange = flight_time * c_emit - sat_clock_corr_m + clock_bias_m
 
-    The receiver measures time-of-flight * c regardless of signal speed, so
-    the output pseudorange is expressed in metres via c * flight_time.
+    The receiver measures time-of-flight * c_emit regardless of signal speed,
+    so the output pseudorange is expressed in metres via c_emit * flight_time.
     """
-    c = SPEED_OF_LIGHT_MPS
+    c_emit = EMISSIONS_SPEED_OF_LIGHT_MPS
     user_xyz = (float(user_state[0]), float(user_state[1]), float(user_state[2]))
     clock_bias_m = float(user_state[3])
 
     # Step 1: initial transmit time (constant-c bootstrap)
-    tow_tx = receiver_tow_corrected_s - pseudorange_m / c
+    tow_tx = receiver_tow_corrected_s - pseudorange_m / c_emit
     week = gps_week
     if tow_tx < 0.0:
         tow_tx += SECONDS_IN_WEEK
@@ -113,7 +113,7 @@ def compute_predicted_pseudorange(  # noqa: C901, PLR0915
     clock_corr = calculate_clock_correction(ephemeris, tow_tx, week)
     sat_clock_corr_m = clock_corr.satellite_clock_correction_m
 
-    corrected_tx = tow_tx + sat_clock_corr_m / c
+    corrected_tx = tow_tx + sat_clock_corr_m / c_emit
     if corrected_tx < 0.0:
         corrected_tx += SECONDS_IN_WEEK
         week -= 1
@@ -128,7 +128,7 @@ def compute_predicted_pseudorange(  # noqa: C901, PLR0915
 
     # Step 4: iterate Earth-rotation geometry with exact ballistic dt solve
     rcv_pos = np.array(user_xyz)
-    flight_time = np.linalg.norm(sat_pos - rcv_pos) / c  # initial guess
+    flight_time = np.linalg.norm(sat_pos - rcv_pos) / c_emit  # initial guess
     u_aim = np.zeros(3)
 
     for _ in range(_BALLISTIC_FLIGHT_ITERATIONS):
@@ -139,10 +139,10 @@ def compute_predicted_pseudorange(  # noqa: C901, PLR0915
             break
 
         # Ballistic interception quadratic (for fixed dr geometry):
-        #   |dr - v_sat * dt|^2 = c^2 * dt^2
+        #   |dr - v_sat * dt|^2 = c_emit^2 * dt^2
         # -> a*dt^2 + b*dt + d = 0
-        #   a = |v_sat|^2 - c^2, b = -2*(dr.v_sat), d = |dr|^2
-        a = float(np.dot(sat_vel, sat_vel) - c * c)
+        #   a = |v_sat|^2 - c_emit^2, b = -2*(dr.v_sat), d = |dr|^2
+        a = float(np.dot(sat_vel, sat_vel) - c_emit * c_emit)
         b = float(-2.0 * np.dot(dr, sat_vel))
         discriminant = b * b - 4.0 * a * d
         if discriminant < 0.0:
@@ -167,7 +167,7 @@ def compute_predicted_pseudorange(  # noqa: C901, PLR0915
     if flight_time > 0.0:
         rcv_at_rx = np.array(_rotate_receiver_by_dt(user_xyz, flight_time))
         dr = rcv_at_rx - sat_pos
-        u_aim = (dr / flight_time - sat_vel) / c
+        u_aim = (dr / flight_time - sat_vel) / c_emit
         u_aim_norm = float(np.linalg.norm(u_aim))
         if u_aim_norm > 0.0:
             u_aim = u_aim / u_aim_norm
@@ -182,8 +182,8 @@ def compute_predicted_pseudorange(  # noqa: C901, PLR0915
     # Receiver velocity positive toward satellite means negative along u_aim
     rcv_vel_along_los = -float(np.dot(rcv_vel, u_aim)) if np.any(u_aim) else 0.0
 
-    # Step 5: predicted pseudorange expressed via c * flight_time
-    predicted_pr = flight_time * c - sat_clock_corr_m + clock_bias_m
+    # Step 5: predicted pseudorange expressed via c_emit * flight_time
+    predicted_pr = flight_time * c_emit - sat_clock_corr_m + clock_bias_m
 
     debug = BallisticObsDebug(
         flight_time_s=flight_time,
