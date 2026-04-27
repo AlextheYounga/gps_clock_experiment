@@ -277,11 +277,16 @@ from vsl.solver import WeightedLeastSquaresSolver as VslSolver
 Or more explicitly:
 
 ```python
-from csl.config import STANDARD_CONFIG, NO_RELATIVITY_CONFIG
+from csl.config import STANDARD_CONFIG
 from vsl.config import BALLISTIC_FULL_VECTOR_CONFIG
 ```
 
 This keeps the comparison logic clear and prevents `main.py` from relying on hybrid shared internals.
+
+Note:
+
+- the long-term project intent is a clean `CSL` versus `VSL` comparison
+- legacy intermediate experiment modes should not shape the target architecture
 
 ## Migration Order
 
