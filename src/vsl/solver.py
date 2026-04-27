@@ -27,6 +27,7 @@ class EpochSolution:
     satellite_ids: list[int]
     residual_rms_m: float
     obs_debug: list[BallisticObsDebug]
+    correction_metrics: dict[str, float]
 
 
 class WeightedLeastSquaresSolver:
@@ -71,7 +72,25 @@ class WeightedLeastSquaresSolver:
             satellite_ids=sat_ids,
             residual_rms_m=rms,
             obs_debug=obs_debug,
+            correction_metrics=self._compute_correction_metrics(obs_debug),
         )
+
+    @staticmethod
+    def _compute_correction_metrics(obs_debug: list[BallisticObsDebug]) -> dict[str, float]:
+        if not obs_debug:
+            return {}
+        n = len(obs_debug)
+        poly = [d.sat_clock_polynomial_m for d in obs_debug]
+        grav_clock = [d.sat_clock_gravity_periodic_m for d in obs_debug]
+        grav_prop = [d.gravity_prop_delta_c_mps for d in obs_debug]
+        return {
+            "clock_poly_m": sum(poly) / n,
+            "clock_poly_abs_m": sum(abs(v) for v in poly) / n,
+            "clock_grav_periodic_m": sum(grav_clock) / n,
+            "clock_grav_periodic_abs_m": sum(abs(v) for v in grav_clock) / n,
+            "prop_gravity_delta_c_mps": sum(grav_prop) / n,
+            "prop_gravity_delta_c_abs_mps": sum(abs(v) for v in grav_prop) / n,
+        }
 
     def _run_iterative_wls(
         self,

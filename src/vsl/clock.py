@@ -32,6 +32,8 @@ class SatClockCorrection:
     satellite_clock_correction_m: float
     eccentric_anomaly_rad: float
     time_from_ref_epoch_s: float
+    polynomial_correction_s: float
+    gravity_periodic_correction_s: float
 
 
 def _fix_week_rollover(time_s: float) -> float:
@@ -97,4 +99,6 @@ def calculate_clock_correction(
         satellite_clock_correction_m=sat_corr_s * EMISSIONS_SPEED_OF_LIGHT_MPS,
         eccentric_anomaly_rad=ecc_anom,
         time_from_ref_epoch_s=tk_s,
+        polynomial_correction_s=init_corr_s,
+        gravity_periodic_correction_s=grav_only_corr_s,
     )

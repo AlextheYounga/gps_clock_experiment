@@ -212,6 +212,58 @@ def print_comparison(
             "(timing heuristics, atmosphere, multipath), even when model deltas are meaningful."
         )
 
+    print("\nAverage Corrections")
+    correction_rows = [
+        ("clock_poly_m", "clock_poly_abs_m", "Clock Polynomial", "m"),
+        ("clock_rel_ecc_m", "clock_rel_ecc_abs_m", "Clock Rel Eccentricity", "m"),
+        ("clock_grav_periodic_m", "clock_grav_periodic_abs_m", "Clock Gravity Periodic", "m"),
+        ("sagnac_equiv_m", "sagnac_equiv_abs_m", "Sagnac Equivalent", "m"),
+        ("prop_gravity_delta_c_mps", "prop_gravity_delta_c_abs_mps", "Propagation Gravity dC", "m/s"),
+    ]
+    for lbl in labels:
+        solutions = [s for s in results[lbl] if s is not None]
+        if not solutions:
+            continue
+        metric_values: dict[str, list[float]] = {}
+        for sol in solutions:
+            metrics = getattr(sol, "correction_metrics", {})
+            for key, value in metrics.items():
+                metric_values.setdefault(key, []).append(float(value))
+
+        if not metric_values:
+            continue
+
+        mean_metrics = {key: (sum(values) / len(values)) for key, values in metric_values.items()}
+
+        rows: list[tuple[str, str, str, str]] = []
+        for signed_key, abs_key, name, unit in correction_rows:
+            if signed_key not in mean_metrics and abs_key not in mean_metrics:
+                continue
+            signed = "--" if signed_key not in mean_metrics else f"{mean_metrics[signed_key]:+.6f}"
+            abs_value = "--" if abs_key not in mean_metrics else f"{mean_metrics[abs_key]:+.6f}"
+            rows.append((name, signed, abs_value, unit))
+
+        if not rows:
+            continue
+
+        metric_width = max(len("Correction"), max(len(row[0]) for row in rows))
+        mean_width = max(len("Mean"), max(len(row[1]) for row in rows))
+        abs_width = max(len("Mean Abs"), max(len(row[2]) for row in rows))
+        unit_width = max(len("Unit"), max(len(row[3]) for row in rows))
+        table_width = metric_width + mean_width + abs_width + unit_width + 9
+
+        print(f"- {lbl}")
+        print("  " + "-" * table_width)
+        print(
+            f"  {'Correction':<{metric_width}} | {'Mean':>{mean_width}} | "
+            f"{'Mean Abs':>{abs_width}} | {'Unit':<{unit_width}}"
+        )
+        print("  " + "-" * table_width)
+        for name, signed, abs_value, unit in rows:
+            print(
+                f"  {name:<{metric_width}} | {signed:>{mean_width}} | {abs_value:>{abs_width}} | {unit:<{unit_width}}"
+            )
+
     print()
 
 

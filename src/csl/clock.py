@@ -28,6 +28,7 @@ class SatClockCorrection:
     satellite_clock_correction_m: float
     eccentric_anomaly_rad: float
     time_from_ref_epoch_s: float
+    polynomial_correction_s: float
     relativistic_correction_s: float
 
 
@@ -96,6 +97,7 @@ def calculate_clock_correction(
         satellite_clock_correction_m=sat_corr_s * SPEED_OF_LIGHT_MPS,
         eccentric_anomaly_rad=eccentric_anomaly_rad,
         time_from_ref_epoch_s=tk_s,
+        polynomial_correction_s=init_corr_s,
         relativistic_correction_s=rel_corr_s if config.enable_relativistic_eccentricity else 0.0,
     )
 

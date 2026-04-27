@@ -57,6 +57,15 @@ class BallisticObsDebug:
     predicted_pseudorange_m: float
     """Predicted pseudorange from the ballistic model (m)."""
 
+    sat_clock_polynomial_m: float
+    """Broadcast polynomial satellite clock correction component (m)."""
+
+    sat_clock_gravity_periodic_m: float
+    """Gravity-only periodic eccentricity clock correction component (m)."""
+
+    gravity_prop_delta_c_mps: float
+    """Gravity-induced propagation-speed shift relative to c_emit (m/s)."""
+
 
 def _rotate_receiver_by_dt(
     rcv_ecef: tuple[float, float, float],
@@ -114,6 +123,8 @@ def compute_predicted_pseudorange(  # noqa: C901, PLR0915
     # Step 2: VSL clock correction (polynomial only)
     clock_corr = calculate_clock_correction(ephemeris, tow_tx, week)
     sat_clock_corr_m = clock_corr.satellite_clock_correction_m
+    sat_clock_poly_m = clock_corr.polynomial_correction_s * c_emit
+    sat_clock_gravity_periodic_m = clock_corr.gravity_periodic_correction_s * c_emit
 
     corrected_tx = tow_tx + sat_clock_corr_m / c_emit
     if corrected_tx < 0.0:
@@ -194,11 +205,21 @@ def compute_predicted_pseudorange(  # noqa: C901, PLR0915
     # Step 5: predicted pseudorange expressed via c_emit * flight_time
     predicted_pr = flight_time * c_emit - sat_clock_corr_m + clock_bias_m
 
+    rcv_at_rx_final = np.array(_rotate_receiver_by_dt(user_xyz, flight_time))
+    c_eff_final = gravity_adjusted_emission_speed_mps(
+        float(np.linalg.norm(sat_pos)),
+        float(np.linalg.norm(rcv_at_rx_final)),
+    )
+    gravity_prop_delta_c_mps = c_eff_final - c_emit
+
     debug = BallisticObsDebug(
         flight_time_s=flight_time,
         sat_vel_magnitude_mps=float(np.linalg.norm(sat_vel)),
         sat_vel_along_los_mps=sat_vel_along_los,
         rcv_vel_along_los_mps=rcv_vel_along_los,
         predicted_pseudorange_m=predicted_pr,
+        sat_clock_polynomial_m=sat_clock_poly_m,
+        sat_clock_gravity_periodic_m=sat_clock_gravity_periodic_m,
+        gravity_prop_delta_c_mps=gravity_prop_delta_c_mps,
     )
     return predicted_pr, debug

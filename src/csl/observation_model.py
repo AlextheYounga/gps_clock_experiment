@@ -8,15 +8,25 @@ prediction logic in this module is CSL-specific.
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 
 import numpy as np
 
-from src.constants import SPEED_OF_LIGHT_MPS
+from src.constants import OMEGA_E_DOT_RAD_S, SPEED_OF_LIGHT_MPS
 from src.csl.clock import calculate_clock_correction, calculate_corrected_transmit_tow_and_week
 from src.csl.config import CslConfig
 from src.csl.orbit import calculate_satellite_position
 from src.ephemeris_selection import select_ephemeris
 from src.models import Ephemeris, SatelliteObservation
+
+
+@dataclass(frozen=True)
+class CslObsDebug:
+    """Per-observation correction diagnostics under CSL."""
+
+    sat_clock_polynomial_m: float
+    sat_clock_rel_eccentricity_m: float
+    sagnac_equivalent_range_m: float
 
 
 def compute_residuals(  # noqa: PLR0913
@@ -26,14 +36,15 @@ def compute_residuals(  # noqa: PLR0913
     nav_by_prn: dict[int, list[Ephemeris]],
     state: np.ndarray,
     config: CslConfig,
-) -> tuple[np.ndarray, list[tuple[float, float, float]], list[int]]:
+) -> tuple[np.ndarray, list[tuple[float, float, float]], list[int], list[CslObsDebug]]:
     """Compute observation residuals under the CSL model.
 
-    Returns (residuals_m, sat_positions, sat_ids).
+    Returns (residuals_m, sat_positions, sat_ids, obs_debug).
     """
     residuals: list[float] = []
     sat_positions: list[tuple[float, float, float]] = []
     sat_ids: list[int] = []
+    obs_debug: list[CslObsDebug] = []
 
     user_pos = (float(state[0]), float(state[1]), float(state[2]))
     tow_corrected = receiver_tow_s - state[3] / SPEED_OF_LIGHT_MPS
@@ -51,12 +62,13 @@ def compute_residuals(  # noqa: PLR0913
 
         sat_pos = calculate_satellite_position(eph, tx_tow, tx_week, user_pos, config)
 
-        sat_clock_corr_m = calculate_clock_correction(
+        sat_clock = calculate_clock_correction(
             eph,
             tx_tow,
             tx_week,
             config,
-        ).satellite_clock_correction_m
+        )
+        sat_clock_corr_m = sat_clock.satellite_clock_correction_m
 
         dx = sat_pos[0] - state[0]
         dy = sat_pos[1] - state[1]
@@ -64,11 +76,20 @@ def compute_residuals(  # noqa: PLR0913
         geometric_range_m = math.sqrt(dx * dx + dy * dy + dz * dz)
         predicted_pr = geometric_range_m - sat_clock_corr_m + state[3]
 
+        sagnac_equiv_m = OMEGA_E_DOT_RAD_S / SPEED_OF_LIGHT_MPS * (sat_pos[0] * state[1] - sat_pos[1] * state[0])
+
         residuals.append(obs.pseudorange_m - predicted_pr)
         sat_positions.append(sat_pos)
         sat_ids.append(obs.svid)
+        obs_debug.append(
+            CslObsDebug(
+                sat_clock_polynomial_m=sat_clock.polynomial_correction_s * SPEED_OF_LIGHT_MPS,
+                sat_clock_rel_eccentricity_m=sat_clock.relativistic_correction_s * SPEED_OF_LIGHT_MPS,
+                sagnac_equivalent_range_m=sagnac_equiv_m,
+            )
+        )
 
-    return np.array(residuals, dtype=float), sat_positions, sat_ids
+    return np.array(residuals, dtype=float), sat_positions, sat_ids, obs_debug
 
 
 def geometry_matrix(
