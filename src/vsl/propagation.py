@@ -8,7 +8,7 @@ where the emitted signal inherits the satellite's inertial velocity.
 For fixed satellite/receiver geometry, the flight time is solved exactly
 from the ballistic interception constraint:
 
-  |dr - v_sat * dt|^2 = c_emit^2 * dt^2
+  |dr - v_sat * dt|^2 = c_eff^2 * dt^2
 
 with dr = r_rcv - r_sat.
 The receiver is modelled as moving with the rotating Earth during signal
@@ -29,6 +29,7 @@ import numpy as np
 from src.constants import OMEGA_E_DOT_RAD_S, SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS as EMISSIONS_SPEED_OF_LIGHT_MPS
 from src.models import Ephemeris
 from src.vsl.clock import calculate_clock_correction
+from src.vsl.corrections import gravity_adjusted_emission_speed_mps
 from src.vsl.orbit import calculate_satellite_state
 
 _BALLISTIC_FLIGHT_ITERATIONS = 10
@@ -87,9 +88,10 @@ def compute_predicted_pseudorange(  # noqa: C901, PLR0915
     2. Apply VSL satellite clock correction (polynomial + gravity-only periodic term).
     3. Get satellite ECEF state (position + velocity) at corrected transmit time.
     4. Iterate Earth-rotation geometry and solve flight time exactly each pass:
-         |dr - v_sat * dt|^2 = c_emit^2 * dt^2
+         |dr - v_sat * dt|^2 = c_eff^2 * dt^2
        where dr = r_rcv(t_rx) - r_sat(t_tx) and r_rcv(t_rx) is rotated
-       forward by dt on each iteration.
+       forward by dt on each iteration. The effective emission speed is
+       reduced slightly by the path-averaged Earth gravitational potential.
     5. predicted_pseudorange = flight_time * c_emit - sat_clock_corr_m + clock_bias_m
 
     The receiver measures time-of-flight * c_emit regardless of signal speed,
@@ -138,11 +140,15 @@ def compute_predicted_pseudorange(  # noqa: C901, PLR0915
         if d < 1.0:
             break
 
+        sat_radius_m = float(np.linalg.norm(sat_pos))
+        rcv_radius_m = float(np.linalg.norm(rcv_at_rx))
+        c_eff = gravity_adjusted_emission_speed_mps(sat_radius_m, rcv_radius_m)
+
         # Ballistic interception quadratic (for fixed dr geometry):
-        #   |dr - v_sat * dt|^2 = c_emit^2 * dt^2
+        #   |dr - v_sat * dt|^2 = c_eff^2 * dt^2
         # -> a*dt^2 + b*dt + d = 0
-        #   a = |v_sat|^2 - c_emit^2, b = -2*(dr.v_sat), d = |dr|^2
-        a = float(np.dot(sat_vel, sat_vel) - c_emit * c_emit)
+        #   a = |v_sat|^2 - c_eff^2, b = -2*(dr.v_sat), d = |dr|^2
+        a = float(np.dot(sat_vel, sat_vel) - c_eff * c_eff)
         b = float(-2.0 * np.dot(dr, sat_vel))
         discriminant = b * b - 4.0 * a * d
         if discriminant < 0.0:
@@ -167,7 +173,10 @@ def compute_predicted_pseudorange(  # noqa: C901, PLR0915
     if flight_time > 0.0:
         rcv_at_rx = np.array(_rotate_receiver_by_dt(user_xyz, flight_time))
         dr = rcv_at_rx - sat_pos
-        u_aim = (dr / flight_time - sat_vel) / c_emit
+        sat_radius_m = float(np.linalg.norm(sat_pos))
+        rcv_radius_m = float(np.linalg.norm(rcv_at_rx))
+        c_eff = gravity_adjusted_emission_speed_mps(sat_radius_m, rcv_radius_m)
+        u_aim = (dr / flight_time - sat_vel) / c_eff
         u_aim_norm = float(np.linalg.norm(u_aim))
         if u_aim_norm > 0.0:
             u_aim = u_aim / u_aim_norm

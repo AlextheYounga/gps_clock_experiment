@@ -10,6 +10,7 @@ import math
 
 from src.constants import (
     F_RELATIVISTIC,
+    MU_M3_S2,
     OMEGA_E_DOT_RAD_S,
     SPEED_OF_LIGHT_MPS as EMISSIONS_SPEED_OF_LIGHT_MPS,
 )
@@ -46,3 +47,26 @@ def sagnac_style_orbit_longitude_rad(ephemeris: Ephemeris, tk_s: float, user_sat
         + (ephemeris.omega_dot - OMEGA_E_DOT_RAD_S) * tk_s
         - OMEGA_E_DOT_RAD_S * (ephemeris.toe + user_sat_range_m / EMISSIONS_SPEED_OF_LIGHT_MPS)
     )
+
+
+def earth_gravitational_potential_m2ps2(radius_m: float) -> float:
+    """Return Earth's Newtonian gravitational potential at radius `r`."""
+    if radius_m <= 1.0:
+        return 0.0
+    return -MU_M3_S2 / radius_m
+
+
+def gravity_adjusted_emission_speed_mps(
+    sat_radius_m: float,
+    rcv_radius_m: float,
+) -> float:
+    """Return a path-averaged gravity-adjusted emission speed.
+
+    Experimental propagation model: deeper average potential slightly
+    reduces the signal's effective propagation speed through the Earth's
+    gravity well.
+    """
+    phi_sat = earth_gravitational_potential_m2ps2(sat_radius_m)
+    phi_rcv = earth_gravitational_potential_m2ps2(rcv_radius_m)
+    phi_avg = 0.5 * (phi_sat + phi_rcv)
+    return EMISSIONS_SPEED_OF_LIGHT_MPS * (1.0 + phi_avg / (EMISSIONS_SPEED_OF_LIGHT_MPS**2))
