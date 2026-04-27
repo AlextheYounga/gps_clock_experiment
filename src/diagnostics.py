@@ -7,6 +7,7 @@ import csv
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from src.constants import SPEED_OF_LIGHT_MPS
 from src.coordinates import distance_3d
 from src.models import EpochMeasurements
 
@@ -71,12 +72,12 @@ def print_comparison(
     truth_ecef: tuple[float, float, float] | None,
     baseline_label: str,
 ) -> None:
-    """Print a multi-mode comparison summary to stdout."""
+    """Print a CSL-versus-VSL comparison summary to stdout."""
     labels = list(results.keys())
     summaries: dict[str, dict[str, float | int | None]] = {}
 
     print("=" * 72)
-    print("GNSS Multi-Mode Comparison")
+    print("GNSS Model Comparison")
     print("=" * 72)
 
     for lbl in labels:
@@ -131,9 +132,11 @@ def print_comparison(
     model_width = max(len("Model"), max(len(lbl) for lbl in labels))
     solved_width = max(len("Solved"), len(f"{len(epochs)}/{len(epochs)}"))
     mean_rms_width = len("Mean RMS")
-    delta_rms_width = len("Mean RMS Change vs CSL")
+    delta_rms_header = f"Mean RMS Change vs {baseline_label}"
+    pos_diff_header = f"Mean 3D Position Difference vs {baseline_label}"
+    delta_rms_width = len(delta_rms_header)
     worse_width = len("Worse Epochs")
-    pos_diff_width = len("Mean 3D Position Difference vs CSL")
+    pos_diff_width = len(pos_diff_header)
     pos_err_width = len("Pos Err vs Fix")
     table_width = (
         model_width
@@ -152,9 +155,9 @@ def print_comparison(
         f"{'Model':<{model_width}} | "
         f"{'Solved':>{solved_width}} | "
         f"{'Mean RMS':>{mean_rms_width}} | "
-        f"{'Mean RMS Change vs CSL':>{delta_rms_width}} | "
+        f"{delta_rms_header:>{delta_rms_width}} | "
         f"{'Worse Epochs':>{worse_width}} | "
-        f"{'Mean 3D Position Difference vs CSL':>{pos_diff_width}} | "
+        f"{pos_diff_header:>{pos_diff_width}} | "
         f"{'Pos Err vs Fix':>{pos_err_width}}"
     )
     print("-" * table_width)
@@ -297,7 +300,7 @@ def write_observation_csv(
             ]
         )
 
-        c_mps = 299_792_458.0
+        emission_speed_mps = SPEED_OF_LIGHT_MPS
 
         for i, (epoch, sol) in enumerate(zip(epochs, vsl_solutions, strict=False)):
             if sol is None:
@@ -312,7 +315,7 @@ def write_observation_csv(
                         f"{residual:.6f}",
                         f"{debug.predicted_pseudorange_m:.4f}",
                         f"{debug.flight_time_s:.9f}",
-                        f"{debug.flight_time_s * c_mps:.4f}",
+                        f"{debug.flight_time_s * emission_speed_mps:.4f}",
                         f"{debug.sat_vel_magnitude_mps:.4f}",
                         f"{debug.sat_vel_along_los_mps:.4f}",
                         f"{debug.rcv_vel_along_los_mps:.4f}",

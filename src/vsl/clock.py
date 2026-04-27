@@ -17,7 +17,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from src.constants import MU_M3_S2, SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS as EMISSIONS_SPEED_OF_LIGHT_MPS
+from src.constants import MU_M3_S2, SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS as EMISSION_SPEED_MPS
 from src.models import Ephemeris
 from src.vsl.corrections import gravity_only_periodic_eccentricity_correction_s, polynomial_clock_correction_s
 
@@ -96,7 +96,7 @@ def calculate_clock_correction(
 
     tk_s = _fix_week_rollover(tx_s - (ephemeris.week * SECONDS_IN_WEEK + ephemeris.toe + sat_corr_s))
     return SatClockCorrection(
-        satellite_clock_correction_m=sat_corr_s * EMISSIONS_SPEED_OF_LIGHT_MPS,
+        satellite_clock_correction_m=sat_corr_s * EMISSION_SPEED_MPS,
         eccentric_anomaly_rad=ecc_anom,
         time_from_ref_epoch_s=tk_s,
         polynomial_correction_s=init_corr_s,

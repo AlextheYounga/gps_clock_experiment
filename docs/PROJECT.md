@@ -181,4 +181,4 @@ The current practical question is:
 - `docs/notes/corrections.md`: current correction mapping between CSL and VSL
 - `docs/papers/gps-marmet.md`: Marmet reference text
 - `docs/references/gps-measurment-tools.md`: Original Google GPS source code extracted to Markdown using code2prompt. (Search this cautiously, big file)
-- `todo.md`: corrections and investigations still pending
+- `docs/todo.md`: corrections and investigations still pending

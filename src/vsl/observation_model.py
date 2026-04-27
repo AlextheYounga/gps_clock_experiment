@@ -15,7 +15,7 @@ import math
 
 import numpy as np
 
-from src.constants import SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS as EMISSIONS_SPEED_OF_LIGHT_MPS
+from src.constants import SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS as EMISSION_SPEED_MPS
 from src.ephemeris_selection import select_ephemeris
 from src.models import Ephemeris, SatelliteObservation
 from src.vsl.clock import calculate_clock_correction
@@ -39,7 +39,7 @@ def compute_residuals(
     sat_ids: list[int] = []
     obs_debug: list[BallisticObsDebug] = []
 
-    c_emit = EMISSIONS_SPEED_OF_LIGHT_MPS
+    c_emit = EMISSION_SPEED_MPS
     tow_corrected = receiver_tow_s - state[3] / c_emit
     user_pos = (float(state[0]), float(state[1]), float(state[2]))
 

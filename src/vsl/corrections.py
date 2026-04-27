@@ -12,7 +12,7 @@ from src.constants import (
     F_RELATIVISTIC,
     MU_M3_S2,
     OMEGA_E_DOT_RAD_S,
-    SPEED_OF_LIGHT_MPS as EMISSIONS_SPEED_OF_LIGHT_MPS,
+    SPEED_OF_LIGHT_MPS as EMISSION_SPEED_MPS,
 )
 from src.models import Ephemeris
 
@@ -45,7 +45,7 @@ def sagnac_style_orbit_longitude_rad(ephemeris: Ephemeris, tk_s: float, user_sat
     return (
         ephemeris.omega0
         + (ephemeris.omega_dot - OMEGA_E_DOT_RAD_S) * tk_s
-        - OMEGA_E_DOT_RAD_S * (ephemeris.toe + user_sat_range_m / EMISSIONS_SPEED_OF_LIGHT_MPS)
+        - OMEGA_E_DOT_RAD_S * (ephemeris.toe + user_sat_range_m / EMISSION_SPEED_MPS)
     )
 
 
@@ -69,4 +69,4 @@ def gravity_adjusted_emission_speed_mps(
     phi_sat = earth_gravitational_potential_m2ps2(sat_radius_m)
     phi_rcv = earth_gravitational_potential_m2ps2(rcv_radius_m)
     phi_avg = 0.5 * (phi_sat + phi_rcv)
-    return EMISSIONS_SPEED_OF_LIGHT_MPS * (1.0 + phi_avg / (EMISSIONS_SPEED_OF_LIGHT_MPS**2))
+    return EMISSION_SPEED_MPS * (1.0 + phi_avg / (EMISSION_SPEED_MPS**2))

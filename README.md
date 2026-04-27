@@ -8,7 +8,7 @@ Receiver-side GPS experiment comparing a standard constant-speed-light receiver 
 - `docs/VSL_REFACTOR.md`: architecture notes on keeping CSL and VSL logic structurally separate
 - `docs/notes/corrections.md`: current map of which corrections exist on each side of the codebase
 - `docs/papers/gps-marmet.md`: Paul Marmet reference text used for Earth-rotation / propagation interpretation
-- `todo.md`: pending corrections and investigations
+- `docs/todo.md`: pending corrections and investigations
 
 ## Repository Layout
 

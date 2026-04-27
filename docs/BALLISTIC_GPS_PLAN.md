@@ -154,11 +154,11 @@ Add an explicit propagation-mode decision point.
 
 The current `enable_relativity` switch is still useful, but its scope is too narrow to serve as the main physics control for this experiment.
 
-Today it only controls the explicit satellite clock eccentricity correction:
+Historically it only controlled the explicit satellite clock eccentricity correction:
 
 - `F * e * sqrt(A) * sin(E)`
 
-That should remain available as an ablation switch, but it should be treated as part of a clock-model choice rather than as a global "relativity" switch.
+The current CSL-vs-VSL architecture no longer treats this as a separate runtime ablation mode.
 
 Recommended structural redesign:
 
@@ -168,10 +168,8 @@ Recommended structural redesign:
 
 Suggested shape:
 
-- `ClockModel.STANDARD`
-- `ClockModel.NO_RELATIVISTIC_ECCENTRICITY`
-- `PropagationModel.STANDARD`
-- `PropagationModel.BALLISTIC_FULL_VECTOR`
+- `CSL/STANDARD`
+- `VSL/FULL_VECTOR`
 
 Suggested implementation shape:
 

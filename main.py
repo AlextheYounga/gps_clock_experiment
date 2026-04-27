@@ -1,4 +1,4 @@
-"""Experiment orchestrator: multi-mode GNSS comparison.
+"""Experiment orchestrator: CSL versus VSL GNSS comparison.
 
 Runs the CSL (constant-speed-light) and VSL (ballistic full-vector)
 solvers side by side on the same dataset and reports comparison metrics.
@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from src.coordinates import lla_to_ecef
-from src.csl.config import NO_RELATIVITY_CONFIG, STANDARD_CONFIG
+from src.csl.config import STANDARD_CONFIG
 from src.csl.solver import EpochSolution as CslSolution, WeightedLeastSquaresSolver as CslSolver
 from src.diagnostics import print_comparison, write_epoch_csv, write_observation_csv
 from src.measurement_parser import parse_gnss_logger_file
@@ -57,10 +57,9 @@ def _solve_all(
     epochs: list[EpochMeasurements],
     nav_by_prn: dict[int, list[Ephemeris]],
 ) -> dict[str, list[CslSolution | VslSolution | None]]:
-    """Run all model configurations over all epochs."""
+    """Run both model configurations over all epochs."""
     solvers: dict[str, CslSolver | VslSolver] = {
         STANDARD_CONFIG.label: CslSolver(STANDARD_CONFIG),
-        NO_RELATIVITY_CONFIG.label: CslSolver(NO_RELATIVITY_CONFIG),
         BALLISTIC_FULL_VECTOR_CONFIG.label: VslSolver(BALLISTIC_FULL_VECTOR_CONFIG),
     }
 
@@ -115,7 +114,7 @@ def _run_dataset(ds: DatasetConfig, output_dir: Path) -> None:
 
 def main() -> None:
     """Load data, run all models, print comparison, write diagnostics CSVs."""
-    parser = argparse.ArgumentParser(description="GNSS multi-mode experiment")
+    parser = argparse.ArgumentParser(description="GNSS CSL versus VSL experiment")
     parser.add_argument(
         "--dataset",
         type=int,

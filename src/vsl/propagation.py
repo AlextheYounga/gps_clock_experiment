@@ -26,7 +26,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from src.constants import OMEGA_E_DOT_RAD_S, SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS as EMISSIONS_SPEED_OF_LIGHT_MPS
+from src.constants import OMEGA_E_DOT_RAD_S, SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS as EMISSION_SPEED_MPS
 from src.models import Ephemeris
 from src.vsl.clock import calculate_clock_correction
 from src.vsl.corrections import gravity_adjusted_emission_speed_mps
@@ -106,7 +106,7 @@ def compute_predicted_pseudorange(  # noqa: C901, PLR0915
     The receiver measures time-of-flight * c_emit regardless of signal speed,
     so the output pseudorange is expressed in metres via c_emit * flight_time.
     """
-    c_emit = EMISSIONS_SPEED_OF_LIGHT_MPS
+    c_emit = EMISSION_SPEED_MPS
     user_xyz = (float(user_state[0]), float(user_state[1]), float(user_state[2]))
     clock_bias_m = float(user_state[3])
 

@@ -3,36 +3,22 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum, auto
-
-
-class ClockModel(Enum):
-    """Satellite clock correction variant for the CSL solver."""
-
-    STANDARD = auto()
-    """Full ICD clock correction including relativistic eccentricity term."""
-
-    NO_RELATIVISTIC_ECCENTRICITY = auto()
-    """Polynomial-only clock correction; ablation test removing F*e*sqrt(A)*sin(E)."""
 
 
 @dataclass(frozen=True)
 class CslConfig:
-    """Full configuration for one CSL solver run."""
-
-    clock_model: ClockModel = ClockModel.STANDARD
+    """Configuration for the standard CSL solver run."""
 
     @property
     def enable_relativistic_eccentricity(self) -> bool:
         """Return whether the relativistic eccentricity term is enabled."""
-        return self.clock_model == ClockModel.STANDARD
+        return True
 
     @property
     def label(self) -> str:
         """Return the human-readable solver label."""
-        return f"CSL/{self.clock_model.name}"
+        return "CSL/STANDARD"
 
 
 # Presets
-STANDARD_CONFIG = CslConfig(clock_model=ClockModel.STANDARD)
-NO_RELATIVITY_CONFIG = CslConfig(clock_model=ClockModel.NO_RELATIVISTIC_ECCENTRICITY)
+STANDARD_CONFIG = CslConfig()
