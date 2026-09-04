@@ -66,13 +66,11 @@ For intuition, treat emitted light like a projectile or bullet fired from a movi
 
 The emitted signal inherits source motion and propagates as a physical object in flight. This is the key intuition behind the receiver-side VSL model.
 
-### 2. Gravity may affect clock rate
+### 2. Satellite clock rate remains Newtonian
 
-This project does not assume that clock rate is immune to physical conditions.
+The current VSL baseline does not apply a gravity- or speed-dependent satellite clock-rate correction.
 
-The working Newtonian intuition is that clock machinery can be affected by its environment. Temperature can affect a clock. Gravity may also affect a clock. Under this interpretation, clocks in space may run differently because they are under different gravitational conditions.
-
-For that reason, the VSL side of this project currently allows a gravity-based clock-rate effect.
+The VSL clock model retains the broadcast polynomial terms as empirical operational calibration inputs, but it does not add an eccentricity-dependent periodic clock term.
 
 ### 3. Speed is not assumed to slow time
 
@@ -80,11 +78,13 @@ The VSL side of this project intentionally rejects the assumption that velocity 
 
 We do not want to assume that the speed of an object directly slows its clock rate. In particular, the VSL model should not smuggle in the idea that orbital speed itself produces time slowing.
 
-This is why the VSL clock interpretation keeps a gravity-based contribution while intentionally omitting the speed-based part of the standard relativistic eccentricity logic.
+This is why the VSL clock interpretation omits the full standard periodic eccentricity clock term.
 
-### 4. Gravity may affect propagation speed
+### 4. Gravity may affect signal propagation and frequency
 
-The VSL model also assumes that gravity can affect propagation speed in flight.
+The VSL model assumes that gravity can affect propagation speed in flight and signal energy/frequency. The gravity-based signal time shift is applied to predicted pseudorange, not satellite clock correction.
+
+Numerically, this shift equals half of the standard periodic eccentricity term, so receiver residuals alone cannot distinguish it from an equivalent clock-side correction. Where the half-size eccentricity term physically belongs is an open experimental question; do not treat the current fit agreement as evidence for either placement.
 
 This is not a separate philosophical track from the ballistic interpretation. In this project, both are part of the same Newtonian-style picture: emitted objects propagate physically and can be influenced by gravitational conditions during flight.
 

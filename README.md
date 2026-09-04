@@ -109,7 +109,7 @@ The large mean satellite clock-rate offset is handled operationally by the GPS s
 
 ## Gravity And Signal Propagation
 
-VSL also includes an experimental assumption that Earth’s gravitational potential slightly reduces signal propagation speed. It uses the average Newtonian potential at the satellite and receiver endpoints:
+VSL also includes experimental signal-domain effects from Earth's gravitational potential. The first slightly reduces signal propagation speed using the average Newtonian potential at the satellite and receiver endpoints:
 
 ```text
 phi(r) = -GM / r
@@ -117,6 +117,8 @@ c_effective = c_emit * (1 + phi_average / c_emit^2)
 ```
 
 For the current GPS geometry, this changes effective speed by approximately `-0.129 m/s`, corresponding to about `0.009 m` of range over a representative path. This centimetre-scale effect is far below the noise level of the available measurements and therefore cannot be validated by the current datasets.
+
+Separately, VSL applies an eccentricity-dependent signal frequency/time shift derived directly from the satellite's changing Newtonian potential. This is applied to predicted pseudorange, not to the satellite clock. Across the current datasets this shift averages about `±7 ns`, equivalent to roughly `2 m` of range. The VSL model therefore retains Newtonian gravity effects on propagation and signal energy/frequency while applying no gravitational clock-rate correction.
 
 ## Experiment Design
 
@@ -142,16 +144,30 @@ Generated reports include:
 
 ## Current Results
 
-These results were generated after making the VSL coordinate frame internally consistent, correcting dataset 2 to GPS week `1911`, and removing the VSL periodic eccentricity clock term.
+These results were generated after making the VSL coordinate frame internally consistent, correcting dataset 2 to GPS week `1911`, and replacing the VSL periodic eccentricity clock term with a gravity-based signal frequency/energy shift applied to predicted pseudorange.
 
 | Dataset | CSL mean RMS | VSL mean RMS | Mean VSL-CSL RMS on shared epochs | Shared epochs | VSL worse epochs |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| 2016-06-30 | `157.837 m` | `160.538 m` | `+2.714 m` | 222 | 206 |
-| 2016-08-22 | `92.662 m` | `99.287 m` | `+6.622 m` | 197 | 150 |
+| 2016-06-30 | `157.837 m` | `158.880 m` | `+1.019 m` | 221 | 151 |
+| 2016-08-22 | `92.662 m` | `97.907 m` | `+5.246 m` | 198 | 138 |
 
 Lower residual RMS indicates a closer fit to the pseudorange measurements. Both datasets currently favor CSL, although the size and quality of the datasets do not support a decisive physical conclusion.
 
-The RMS gap is small compared with the absolute residuals: VSL is about `1.72%` worse than CSL on the first dataset and `7.15%` worse on the second. Removing the VSL periodic eccentricity clock term therefore changes the results modestly, but does not change the overall conclusion. This is a relative fit-quality comparison, not a percentage difference between the solved positions. Both models are fitting noisy measurements with residuals of roughly `90–160 m` RMS.
+The RMS gap is small compared with the absolute residuals: VSL is about `0.66%` worse than CSL on the first dataset and `5.66%` worse on the second. Relocating the half-size periodic term from the satellite clock to the signal restored nearly all of the fit quality lost by its removal, but this does not change the overall conclusion. This is a relative fit-quality comparison, not a percentage difference between the solved positions. Both models are fitting noisy measurements with residuals of roughly `90–160 m` RMS.
+
+### Result Progression
+
+The half-size periodic eccentricity term was tested in three VSL configurations to see where it belongs:
+
+| VSL configuration | 2016-06-30 | 2016-08-22 |
+| --- | ---: | ---: |
+| A. Gravity-only clock term (initial hybrid) | `+1.009 m` RMS delta, 149/220 worse | `+5.381 m` RMS delta, 140/199 worse |
+| B. No periodic term (strict Newtonian clock) | `+2.714 m` RMS delta, 206/222 worse | `+6.622 m` RMS delta, 150/197 worse |
+| C. Gravity signal frequency/energy shift on predicted pseudorange (current) | `+1.019 m` RMS delta, 151/221 worse | `+5.246 m` RMS delta, 138/198 worse |
+
+Removing the term entirely (A to B) cost roughly `1.7 m` and `1.2 m` of fit quality and sharply increased the number of worse epochs. Restoring the identical magnitude as a signal-domain shift (B to C) recovered the fit to within `0.01 m` and `0.14 m` of the clock-based configuration, on slightly different shared-epoch sets.
+
+The near-identical residuals are expected rather than surprising. The new term is numerically half of the standard periodic eccentricity correction, and in a pseudorange residual it enters the same way whether it is applied to the satellite clock or to the received signal. The current data therefore cannot distinguish where the half-size eccentricity term belongs — satellite clock rate versus signal frequency — because both placements produce essentially the same predicted pseudoranges. Resolving that question requires better measurements or an independent observable, not receiver residuals alone.
 
 Despite their similar residual RMS values, the independently solved CSL and VSL positions differ by approximately `60–70 m` on average. This is possible because the two propagation models predict different satellite ranges, while the least-squares solver can trade position against receiver clock bias. With measurement errors already this large, both models can fit the data almost equally poorly while settling on noticeably different positions. The available data therefore cannot resolve whether that position difference comes from the propagation model or from measurement and modeling error.
 

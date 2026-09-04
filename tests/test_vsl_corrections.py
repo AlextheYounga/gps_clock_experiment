@@ -5,10 +5,12 @@ from __future__ import annotations
 import math
 import unittest
 
-from src.constants import OMEGA_E_DOT_RAD_S
+from src.constants import F_RELATIVISTIC, OMEGA_E_DOT_RAD_S
+from src.models import Ephemeris
 from src.vsl.corrections import (
     earth_rotation_velocity_mps,
     ecef_to_inertial_velocity_mps,
+    gravity_signal_time_shift_s,
     rotate_ecef_position_forward,
 )
 
@@ -37,6 +39,60 @@ class VslFrameCorrectionTests(unittest.TestCase):
         self.assertAlmostEqual(rotated[1], radius_m, places=5)
         self.assertAlmostEqual(rotation_velocity[0], 0.0)
         self.assertAlmostEqual(rotation_velocity[1], OMEGA_E_DOT_RAD_S * radius_m)
+
+
+class VslGravitySignalCorrectionTests(unittest.TestCase):
+    """Validate the VSL gravity-induced signal frequency/time term."""
+
+    @staticmethod
+    def _ephemeris(eccentricity: float) -> Ephemeris:
+        return Ephemeris(
+            prn=1,
+            week=0,
+            toc=0.0,
+            toe=0.0,
+            af0=0.0,
+            af1=0.0,
+            af2=0.0,
+            iode=0.0,
+            crs=0.0,
+            delta_n=0.0,
+            m0=0.0,
+            cuc=0.0,
+            e=eccentricity,
+            cus=0.0,
+            root_a=math.sqrt(26_560_000.0),
+            cic=0.0,
+            omega0=0.0,
+            cis=0.0,
+            i0=0.0,
+            crc=0.0,
+            omega=0.0,
+            omega_dot=0.0,
+            i_dot=0.0,
+            tgd=0.0,
+            iodc=0.0,
+        )
+
+    def test_gravity_signal_time_shift_is_zero_for_circular_orbit(self) -> None:
+        shift_s = gravity_signal_time_shift_s(self._ephemeris(0.0), math.pi / 2.0)
+
+        self.assertEqual(shift_s, 0.0)
+
+    def test_gravity_signal_time_shift_matches_half_standard_eccentricity_term(self) -> None:
+        ephemeris = self._ephemeris(0.01)
+        eccentric_anomaly_rad = 0.8
+
+        shift_s = gravity_signal_time_shift_s(ephemeris, eccentric_anomaly_rad)
+        half_standard_term_s = (
+            0.5
+            * F_RELATIVISTIC
+            * ephemeris.e
+            * ephemeris.root_a
+            * math.sin(eccentric_anomaly_rad)
+        )
+
+        self.assertAlmostEqual(shift_s, half_standard_term_s, places=15)
 
 
 if __name__ == "__main__":

@@ -100,3 +100,18 @@ def gravity_adjusted_emission_speed_mps(
     phi_rcv = earth_gravitational_potential_m2ps2(rcv_radius_m)
     phi_avg = 0.5 * (phi_sat + phi_rcv)
     return EMISSION_SPEED_MPS * (1.0 + phi_avg / (EMISSION_SPEED_MPS**2))
+
+
+def gravity_signal_time_shift_s(ephemeris: Ephemeris, eccentric_anomaly_rad: float) -> float:
+    """Return the periodic gravity-induced signal frequency/time shift.
+
+    This is a signal-domain effect derived from the satellite's changing
+    Newtonian gravitational potential, not a satellite clock correction.
+    """
+    semi_major_axis_m = ephemeris.root_a**2
+    return (
+        -math.sqrt(MU_M3_S2 * semi_major_axis_m)
+        * ephemeris.e
+        * math.sin(eccentric_anomaly_rad)
+        / (EMISSION_SPEED_MPS**2)
+    )
