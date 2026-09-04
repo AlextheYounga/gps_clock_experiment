@@ -11,6 +11,8 @@ from src.constants import SPEED_OF_LIGHT_MPS
 from src.coordinates import distance_3d
 from src.models import EpochMeasurements
 
+_MIN_COMPARABLE_SATS = 5
+
 if TYPE_CHECKING:
     from src.vsl.solver import EpochSolution as VslEpochSolution
 
@@ -66,7 +68,7 @@ def write_epoch_csv(
             writer.writerow(row)
 
 
-def print_comparison(
+def print_comparison(  # noqa: PLR0912
     epochs: list[EpochMeasurements],
     results: dict[str, list],
     truth_ecef: tuple[float, float, float] | None,
@@ -88,6 +90,7 @@ def print_comparison(
             "mean_rms": None,
             "delta_rms": 0.0 if lbl == baseline_label else None,
             "worse_epochs": None if lbl != baseline_label else 0,
+            "comparable_epochs": None if lbl != baseline_label else n_solved,
             "mean_pos_diff": 0.0 if lbl == baseline_label else None,
             "pos_err": None,
         }
@@ -114,6 +117,8 @@ def print_comparison(
         for s_base, s_alt in zip(baseline_sols, alt_sols, strict=False):
             if s_base is None or s_alt is None:
                 continue
+            if len(s_base.satellite_ids) < _MIN_COMPARABLE_SATS or s_base.satellite_ids != s_alt.satellite_ids:
+                continue
             both_count += 1
             pos_b = (float(s_base.state_xyzb_m[0]), float(s_base.state_xyzb_m[1]), float(s_base.state_xyzb_m[2]))
             pos_a = (float(s_alt.state_xyzb_m[0]), float(s_alt.state_xyzb_m[1]), float(s_alt.state_xyzb_m[2]))
@@ -127,15 +132,17 @@ def print_comparison(
 
         summaries[lbl]["delta_rms"] = sum(rms_deltas) / len(rms_deltas)
         summaries[lbl]["worse_epochs"] = rms_worse_count
+        summaries[lbl]["comparable_epochs"] = both_count
         summaries[lbl]["mean_pos_diff"] = sum(pos_deltas) / len(pos_deltas)
 
-    model_width = max(len("Model"), max(len(lbl) for lbl in labels))
+    model_width = max(len("Model"), *(len(lbl) for lbl in labels))
     solved_width = max(len("Solved"), len(f"{len(epochs)}/{len(epochs)}"))
     mean_rms_width = len("Mean RMS")
     delta_rms_header = f"Mean RMS Change vs {baseline_label}"
     pos_diff_header = f"Mean 3D Position Difference vs {baseline_label}"
     delta_rms_width = len(delta_rms_header)
     worse_width = len("Worse Epochs")
+    shared_width = len("Shared Epochs")
     pos_diff_width = len(pos_diff_header)
     pos_err_width = len("Pos Err vs Fix")
     table_width = (
@@ -144,9 +151,10 @@ def print_comparison(
         + mean_rms_width
         + delta_rms_width
         + worse_width
+        + shared_width
         + pos_diff_width
         + pos_err_width
-        + 18
+        + 21
     )
 
     print("Model Summary")
@@ -157,6 +165,7 @@ def print_comparison(
         f"{'Mean RMS':>{mean_rms_width}} | "
         f"{delta_rms_header:>{delta_rms_width}} | "
         f"{'Worse Epochs':>{worse_width}} | "
+        f"{'Shared Epochs':>{shared_width}} | "
         f"{pos_diff_header:>{pos_diff_width}} | "
         f"{'Pos Err vs Fix':>{pos_err_width}}"
     )
@@ -168,12 +177,16 @@ def print_comparison(
         if lbl == baseline_label:
             delta_rms = "baseline"
             worse = "baseline"
+            shared = "baseline"
             pos_diff = "baseline"
         else:
             delta_rms = "--" if summary["delta_rms"] is None else f"{float(summary['delta_rms']):+.3f}"
             worse = (
-                "--" if summary["worse_epochs"] is None else f"{int(summary['worse_epochs'])}/{int(summary['solved'])}"
+                "--"
+                if summary["worse_epochs"] is None or summary["comparable_epochs"] is None
+                else f"{int(summary['worse_epochs'])}/{int(summary['comparable_epochs'])}"
             )
+            shared = "--" if summary["comparable_epochs"] is None else str(int(summary["comparable_epochs"]))
             pos_diff = "--" if summary["mean_pos_diff"] is None else f"{float(summary['mean_pos_diff']):.3f}"
         pos_err = "--" if summary["pos_err"] is None else f"{float(summary['pos_err']):.3f}"
         print(
@@ -182,6 +195,7 @@ def print_comparison(
             f"{mean_rms:>{mean_rms_width}} | "
             f"{delta_rms:>{delta_rms_width}} | "
             f"{worse:>{worse_width}} | "
+            f"{shared:>{shared_width}} | "
             f"{pos_diff:>{pos_diff_width}} | "
             f"{pos_err:>{pos_err_width}}"
         )
@@ -198,15 +212,19 @@ def print_comparison(
         if lbl == baseline_label:
             continue
         summary = summaries[lbl]
-        if summary["delta_rms"] is None or summary["worse_epochs"] is None:
+        if summary["delta_rms"] is None or summary["worse_epochs"] is None or summary["comparable_epochs"] is None:
             continue
         print(
             f"- {lbl}: mean RMS change vs {baseline_label} = {float(summary['delta_rms']):+.3f} m; "
-            f"worse in {int(summary['worse_epochs'])}/{int(summary['solved'])} epochs."
+            f"worse in {int(summary['worse_epochs'])}/{int(summary['comparable_epochs'])} shared-satellite epochs."
         )
 
     print("\nNotes")
     print("  - Relative comparisons against CSL are the strongest signal in this experiment.")
+    print(
+        "  - RMS deltas and position differences use only epochs with the same retained satellite IDs "
+        "and at least five satellites."
+    )
     if truth_ecef is not None:
         print("  - 'Pos Err vs Fix' uses the phone logger Fix as a coarse external reference, not survey truth.")
     if summaries.get(baseline_label, {}).get("mean_rms") is not None:
@@ -222,6 +240,8 @@ def print_comparison(
         ("clock_grav_periodic_m", "clock_grav_periodic_abs_m", "Clock Gravity Periodic", "m"),
         ("sagnac_equiv_m", "sagnac_equiv_abs_m", "Sagnac Equivalent", "m"),
         ("prop_gravity_delta_c_mps", "prop_gravity_delta_c_abs_mps", "Propagation Gravity dC", "m/s"),
+        ("sat_frame_rotation_vel_mps", None, "Satellite Frame Rotation", "m/s"),
+        ("transmit_time_shift_ns", "transmit_time_shift_abs_ns", "Transmit Time Shift", "ns"),
     ]
     for lbl in labels:
         solutions = [s for s in results[lbl] if s is not None]
@@ -243,16 +263,16 @@ def print_comparison(
             if signed_key not in mean_metrics and abs_key not in mean_metrics:
                 continue
             signed = "--" if signed_key not in mean_metrics else f"{mean_metrics[signed_key]:+.6f}"
-            abs_value = "--" if abs_key not in mean_metrics else f"{mean_metrics[abs_key]:+.6f}"
+            abs_value = "--" if abs_key is None or abs_key not in mean_metrics else f"{mean_metrics[abs_key]:+.6f}"
             rows.append((name, signed, abs_value, unit))
 
         if not rows:
             continue
 
-        metric_width = max(len("Correction"), max(len(row[0]) for row in rows))
-        mean_width = max(len("Mean"), max(len(row[1]) for row in rows))
-        abs_width = max(len("Mean Abs"), max(len(row[2]) for row in rows))
-        unit_width = max(len("Unit"), max(len(row[3]) for row in rows))
+        metric_width = max(len("Correction"), *(len(row[0]) for row in rows))
+        mean_width = max(len("Mean"), *(len(row[1]) for row in rows))
+        abs_width = max(len("Mean Abs"), *(len(row[2]) for row in rows))
+        unit_width = max(len("Unit"), *(len(row[3]) for row in rows))
         table_width = metric_width + mean_width + abs_width + unit_width + 9
 
         print(f"- {lbl}")
@@ -295,8 +315,11 @@ def write_observation_csv(
                 "flight_time_s",
                 "geometric_range_equivalent_m",
                 "sat_vel_magnitude_mps",
+                "sat_vel_ecef_magnitude_mps",
+                "sat_frame_rotation_velocity_mps",
                 "sat_vel_along_los_mps",
                 "rcv_vel_along_los_mps",
+                "transmit_time_shift_s",
             ]
         )
 
@@ -317,7 +340,10 @@ def write_observation_csv(
                         f"{debug.flight_time_s:.9f}",
                         f"{debug.flight_time_s * emission_speed_mps:.4f}",
                         f"{debug.sat_vel_magnitude_mps:.4f}",
+                        f"{debug.sat_vel_ecef_magnitude_mps:.4f}",
+                        f"{debug.earth_rotation_velocity_magnitude_mps:.4f}",
                         f"{debug.sat_vel_along_los_mps:.4f}",
                         f"{debug.rcv_vel_along_los_mps:.4f}",
+                        f"{debug.transmit_time_shift_s:.12f}",
                     ]
                 )

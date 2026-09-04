@@ -49,6 +49,42 @@ def sagnac_style_orbit_longitude_rad(ephemeris: Ephemeris, tk_s: float, user_sat
     )
 
 
+def earth_rotation_velocity_mps(position_m: tuple[float, float, float]) -> tuple[float, float, float]:
+    """Return the ECEF-frame velocity induced by Earth rotation at a position."""
+    x_m, y_m, _ = position_m
+    return -OMEGA_E_DOT_RAD_S * y_m, OMEGA_E_DOT_RAD_S * x_m, 0.0
+
+
+def ecef_to_inertial_velocity_mps(
+    position_m: tuple[float, float, float],
+    ecef_velocity_mps: tuple[float, float, float],
+) -> tuple[float, float, float]:
+    """Return inertial velocity expressed in the transmit-time ECEF basis.
+
+    The ballistic propagation solve rotates the receiver from reception into
+    the transmit-time-oriented basis. Satellite velocity must be expressed in
+    that same basis, so its Earth-frame rotation component is restored.
+    """
+    rotation_velocity_mps = earth_rotation_velocity_mps(position_m)
+    return tuple(ecef_velocity_mps[index] + rotation_velocity_mps[index] for index in range(3))
+
+
+def rotate_ecef_position_forward(
+    position_m: tuple[float, float, float],
+    duration_s: float,
+) -> tuple[float, float, float]:
+    """Rotate an ECEF position forward into the transmit-time inertial basis."""
+    angle = OMEGA_E_DOT_RAD_S * duration_s
+    cos_angle = math.cos(angle)
+    sin_angle = math.sin(angle)
+    x_m, y_m, z_m = position_m
+    return (
+        x_m * cos_angle - y_m * sin_angle,
+        x_m * sin_angle + y_m * cos_angle,
+        z_m,
+    )
+
+
 def earth_gravitational_potential_m2ps2(radius_m: float) -> float:
     """Return Earth's Newtonian gravitational potential at radius `r`."""
     if radius_m <= 1.0:

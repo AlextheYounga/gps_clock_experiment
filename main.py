@@ -48,7 +48,7 @@ def _datasets(root: Path) -> list[DatasetConfig]:
             name="dataset2_2016-08-22",
             log_path=root / "data" / "pseudoranges_log_2016_08_22_14_45_50.txt",
             rinex_path=root / "data" / "hour2350.16n",
-            gps_week=1910,
+            gps_week=1911,
         ),
     ]
 

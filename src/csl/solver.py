@@ -14,7 +14,7 @@ from src.models import Ephemeris, EpochMeasurements, SatelliteObservation
 _LEAST_SQUARE_TOLERANCE_M = 4.0e-8
 _MAX_ITERATIONS = 100
 _OUTLIER_THRESHOLD_M = 20.0
-_MIN_SATS = 4
+_MIN_SATS = 5
 
 
 @dataclass(frozen=True)

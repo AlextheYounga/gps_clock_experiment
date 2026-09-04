@@ -22,6 +22,8 @@ from src.vsl.clock import calculate_clock_correction
 from src.vsl.orbit import calculate_satellite_position
 from src.vsl.propagation import BallisticObsDebug, compute_predicted_pseudorange
 
+_NUMERICAL_JACOBIAN_STEPS_M = (0.1, 0.1, 0.1, 0.1)
+
 
 def compute_residuals(
     observations: list[SatelliteObservation],
@@ -99,4 +101,43 @@ def geometry_matrix(
         h[i, 1] = (state[1] - sat_pos[1]) / norm
         h[i, 2] = (state[2] - sat_pos[2]) / norm
         h[i, 3] = 1.0
+    return h
+
+
+def ballistic_geometry_matrix(
+    observations: list[SatelliteObservation],
+    receiver_tow_s: float,
+    gps_week: int,
+    nav_by_prn: dict[int, list[Ephemeris]],
+    state: np.ndarray,
+) -> np.ndarray:
+    """Return a finite-difference Jacobian of the full ballistic prediction.
+
+    ``compute_residuals`` returns measured minus predicted pseudorange. The
+    WLS update solves against the predicted-pseudorange derivative, so this
+    function returns the negative residual derivative.
+    """
+    h = np.zeros((len(observations), 4), dtype=float)
+    for column, step_m in enumerate(_NUMERICAL_JACOBIAN_STEPS_M):
+        plus_state = state.copy()
+        minus_state = state.copy()
+        plus_state[column] += step_m
+        minus_state[column] -= step_m
+        plus_residuals, _, plus_sat_ids, _ = compute_residuals(
+            observations,
+            receiver_tow_s,
+            gps_week,
+            nav_by_prn,
+            plus_state,
+        )
+        minus_residuals, _, minus_sat_ids, _ = compute_residuals(
+            observations,
+            receiver_tow_s,
+            gps_week,
+            nav_by_prn,
+            minus_state,
+        )
+        if plus_sat_ids != minus_sat_ids:
+            raise RuntimeError("Ballistic Jacobian changed satellite ordering")
+        h[:, column] = -(plus_residuals - minus_residuals) / (2.0 * step_m)
     return h

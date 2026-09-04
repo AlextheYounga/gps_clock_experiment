@@ -9,13 +9,15 @@ import numpy as np
 
 from src.models import Ephemeris, EpochMeasurements, SatelliteObservation
 from src.vsl.config import VslConfig
-from src.vsl.observation_model import compute_residuals, geometry_matrix
+from src.vsl.observation_model import ballistic_geometry_matrix, compute_residuals
 from src.vsl.propagation import BallisticObsDebug
 
-_LEAST_SQUARE_TOLERANCE_M = 4.0e-8
+# The finite-difference ballistic Jacobian has a sub-millimetre numerical
+# resolution floor, far below the measurement noise in this experiment.
+_LEAST_SQUARE_TOLERANCE_M = 1.0e-3
 _MAX_ITERATIONS = 100
 _OUTLIER_THRESHOLD_M = 20.0
-_MIN_SATS = 4
+_MIN_SATS = 5
 
 
 @dataclass(frozen=True)
@@ -83,6 +85,8 @@ class WeightedLeastSquaresSolver:
         poly = [d.sat_clock_polynomial_m for d in obs_debug]
         grav_clock = [d.sat_clock_gravity_periodic_m for d in obs_debug]
         grav_prop = [d.gravity_prop_delta_c_mps for d in obs_debug]
+        frame_rotation = [d.earth_rotation_velocity_magnitude_mps for d in obs_debug]
+        transmit_shift = [d.transmit_time_shift_s for d in obs_debug]
         return {
             "clock_poly_m": sum(poly) / n,
             "clock_poly_abs_m": sum(abs(v) for v in poly) / n,
@@ -90,6 +94,9 @@ class WeightedLeastSquaresSolver:
             "clock_grav_periodic_abs_m": sum(abs(v) for v in grav_clock) / n,
             "prop_gravity_delta_c_mps": sum(grav_prop) / n,
             "prop_gravity_delta_c_abs_mps": sum(abs(v) for v in grav_prop) / n,
+            "sat_frame_rotation_vel_mps": sum(frame_rotation) / n,
+            "transmit_time_shift_ns": 1.0e9 * sum(transmit_shift) / n,
+            "transmit_time_shift_abs_ns": 1.0e9 * sum(abs(v) for v in transmit_shift) / n,
         }
 
     def _run_iterative_wls(
@@ -121,7 +128,13 @@ class WeightedLeastSquaresSolver:
                 state,
             )
 
-            h = geometry_matrix(sat_positions, state)
+            h = ballistic_geometry_matrix(
+                observations,
+                receiver_tow_s,
+                gps_week,
+                nav_by_prn,
+                state,
+            )
             sigmas = np.array([o.sigma_m for o in observations], dtype=float)
             w = np.diag(1.0 / np.maximum(sigmas * sigmas, 1e-12))
 
