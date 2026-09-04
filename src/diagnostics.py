@@ -239,7 +239,6 @@ def print_comparison(  # noqa: PLR0912
         ("clock_rel_ecc_m", "clock_rel_ecc_abs_m", "Clock Rel Eccentricity", "m"),
         ("sagnac_equiv_m", "sagnac_equiv_abs_m", "Sagnac Equivalent", "m"),
         ("prop_gravity_delta_c_mps", "prop_gravity_delta_c_abs_mps", "Propagation Gravity dC", "m/s"),
-        ("signal_gravity_shift_ns", "signal_gravity_shift_abs_ns", "Signal Gravity Shift", "ns"),
         ("sat_frame_rotation_vel_mps", None, "Satellite Frame Rotation", "m/s"),
         ("transmit_time_shift_ns", "transmit_time_shift_abs_ns", "Transmit Time Shift", "ns"),
     ]
@@ -319,7 +318,6 @@ def write_observation_csv(
                 "sat_frame_rotation_velocity_mps",
                 "sat_vel_along_los_mps",
                 "rcv_vel_along_los_mps",
-                "gravity_signal_time_shift_s",
                 "transmit_time_shift_s",
             ]
         )
@@ -345,7 +343,6 @@ def write_observation_csv(
                         f"{debug.earth_rotation_velocity_magnitude_mps:.4f}",
                         f"{debug.sat_vel_along_los_mps:.4f}",
                         f"{debug.rcv_vel_along_los_mps:.4f}",
-                        f"{debug.gravity_signal_time_shift_s:.12f}",
                         f"{debug.transmit_time_shift_s:.12f}",
                     ]
                 )

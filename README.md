@@ -9,6 +9,8 @@ The project asks a limited, testable question: can the experimental VSL receiver
 
 This is a numerical experiment, not proof of either physical theory. Its results are constrained by the quality of the recorded phone measurements, the assumptions described below, and the small number of available datasets.
 
+The historical progression of model variants and their measured results is recorded in [`docs/results-history.md`](docs/results-history.md).
+
 ## GPS Receiver Basics
 
 A GPS satellite broadcasts its transmission time and orbital data. A receiver compares the transmitted time with its reception time to estimate a **pseudorange**, which is a signal travel-time measurement expressed in metres.
@@ -59,7 +61,7 @@ For each observation, VSL jointly iterates:
 2. satellite clock correction
 3. satellite position and velocity at transmission
 4. receiver movement during signal flight
-5. gravity-adjusted nominal propagation speed
+5. Newtonian corpuscle light speed between satellite and receiver
 6. ballistic interception time
 
 The fixed-geometry interception equation is:
@@ -103,22 +105,33 @@ They differ in their periodic eccentricity clock treatment:
 | CSL | Uses the full standard term `F * e * sqrt(A) * sin(E)`, conventionally interpreted as the combined gravitational-potential and orbital-speed effect. |
 | VSL | Applies no independent periodic eccentricity clock correction. |
 
-The VSL clock choice is the strict Newtonian baseline for this experiment: broadcast polynomial terms remain as empirical satellite-clock calibration inputs, while eccentricity affects the Keplerian orbit, satellite velocity, and ballistic propagation but does not directly alter the clock rate. The experimental gravity-on-propagation assumption remains separate from the clock model.
+The VSL clock applies no gravitational clock-rate correction: broadcast polynomial terms remain as empirical satellite-clock calibration inputs, while eccentricity affects the Keplerian orbit, satellite velocity, and ballistic propagation but does not directly alter the clock rate. Gravity enters the VSL model only through the signal propagation treatment described below.
 
 The large mean satellite clock-rate offset is handled operationally by the GPS space and control segments. This receiver experiment applies the broadcast clock products without adding a VSL-specific periodic eccentricity clock term.
 
 ## Gravity And Signal Propagation
 
-VSL also includes experimental signal-domain effects from Earth's gravitational potential. The first slightly reduces signal propagation speed using the average Newtonian potential at the satellite and receiver endpoints:
+The VSL side is a ballistic/emission model with a Newtonian-style gravitational treatment of light propagation. It is not a purely Newtonian re-derivation of GPS. Gravity affects only the signal in flight; it never alters the satellite clock model.
+
+The emitted signal is treated as a Newtonian corpuscle fired at `c_emit` from the satellite and acted on by Earth's gravitational field. With the Newtonian potential:
 
 ```text
 phi(r) = -GM / r
-c_effective = c_emit * (1 + phi_average / c_emit^2)
 ```
 
-For the current GPS geometry, this changes effective speed by approximately `-0.129 m/s`, corresponding to about `0.009 m` of range over a representative path. This centimetre-scale effect is far below the noise level of the available measurements and therefore cannot be validated by the current datasets.
+conservation of mechanical energy gives the corpuscle's speed at the receiver:
 
-Separately, VSL applies an eccentricity-dependent signal frequency/time shift derived directly from the satellite's changing Newtonian potential. This is applied to predicted pseudorange, not to the satellite clock. Across the current datasets this shift averages about `±7 ns`, equivalent to roughly `2 m` of range. The VSL model therefore retains Newtonian gravity effects on propagation and signal energy/frequency while applying no gravitational clock-rate correction.
+```text
+v_received = sqrt(c_emit^2 + 2 * (phi_satellite - phi_receiver))
+```
+
+Falling light speeds up; rising light slows down. For the flight-time solver, the effective propagation speed is the average of the emitted and received speeds:
+
+```text
+c_effective = (c_emit + v_received) / 2
+```
+
+For current GPS geometry, the corpuscle arrives about `+0.159 m/s` faster than `c_emit`, giving `c_effective ≈ c_emit + 0.079 m/s`, or roughly `6 mm` of range over a representative path. This effect carries no eccentricity dependence and is far below the noise level of the available measurements. VSL applies no gravitational clock-rate correction, no photon-frequency or energy correction, and no GR coordinate-speed formulas.
 
 ## Experiment Design
 
@@ -144,30 +157,31 @@ Generated reports include:
 
 ## Current Results
 
-These results were generated after making the VSL coordinate frame internally consistent, correcting dataset 2 to GPS week `1911`, and replacing the VSL periodic eccentricity clock term with a gravity-based signal frequency/energy shift applied to predicted pseudorange.
+These results were generated after making the VSL coordinate frame internally consistent, correcting dataset 2 to GPS week `1911`, and simplifying the VSL gravity treatment to a Newtonian corpuscle light-speed model with no periodic eccentricity term.
 
 | Dataset | CSL mean RMS | VSL mean RMS | Mean VSL-CSL RMS on shared epochs | Shared epochs | VSL worse epochs |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| 2016-06-30 | `157.837 m` | `158.880 m` | `+1.019 m` | 221 | 151 |
-| 2016-08-22 | `92.662 m` | `97.907 m` | `+5.246 m` | 198 | 138 |
+| 2016-06-30 | `157.837 m` | `160.479 m` | `+2.702 m` | 221 | 205 |
+| 2016-08-22 | `92.662 m` | `99.285 m` | `+6.608 m` | 196 | 149 |
 
 Lower residual RMS indicates a closer fit to the pseudorange measurements. Both datasets currently favor CSL, although the size and quality of the datasets do not support a decisive physical conclusion.
 
-The RMS gap is small compared with the absolute residuals: VSL is about `0.66%` worse than CSL on the first dataset and `5.66%` worse on the second. Relocating the half-size periodic term from the satellite clock to the signal restored nearly all of the fit quality lost by its removal, but this does not change the overall conclusion. This is a relative fit-quality comparison, not a percentage difference between the solved positions. Both models are fitting noisy measurements with residuals of roughly `90–160 m` RMS.
+The RMS gap is small compared with the absolute residuals: VSL is about `1.71%` worse than CSL on the first dataset and `7.13%` worse on the second. This is a relative fit-quality comparison, not a percentage difference between the solved positions. Both models are fitting noisy measurements with residuals of roughly `90–160 m` RMS.
 
 ### Result Progression
 
-The half-size periodic eccentricity term was tested in three VSL configurations to see where it belongs:
+The VSL gravity model was tested in four configurations:
 
 | VSL configuration | 2016-06-30 | 2016-08-22 |
 | --- | ---: | ---: |
 | A. Gravity-only clock term (initial hybrid) | `+1.009 m` RMS delta, 149/220 worse | `+5.381 m` RMS delta, 140/199 worse |
-| B. No periodic term (strict Newtonian clock) | `+2.714 m` RMS delta, 206/222 worse | `+6.622 m` RMS delta, 150/197 worse |
-| C. Gravity signal frequency/energy shift on predicted pseudorange (current) | `+1.019 m` RMS delta, 151/221 worse | `+5.246 m` RMS delta, 138/198 worse |
+| B. No periodic term (Newtonian clock) | `+2.714 m` RMS delta, 206/222 worse | `+6.622 m` RMS delta, 150/197 worse |
+| C. Gravity signal frequency/energy shift on predicted pseudorange | `+1.019 m` RMS delta, 151/221 worse | `+5.246 m` RMS delta, 138/198 worse |
+| D. Newtonian corpuscle light speed, no periodic term (current) | `+2.702 m` RMS delta, 205/221 worse | `+6.608 m` RMS delta, 149/196 worse |
 
-Removing the term entirely (A to B) cost roughly `1.7 m` and `1.2 m` of fit quality and sharply increased the number of worse epochs. Restoring the identical magnitude as a signal-domain shift (B to C) recovered the fit to within `0.01 m` and `0.14 m` of the clock-based configuration, on slightly different shared-epoch sets.
+Removing the half-size periodic term (A to B) cost roughly `1.7 m` and `1.2 m` of fit quality and sharply increased the number of worse epochs. Restoring the identical magnitude as a signal-domain shift (B to C) recovered the fit to within `0.01 m` and `0.14 m` of the clock-based configuration, on slightly different shared-epoch sets. That near-equivalence is expected: a pseudorange residual cannot tell whether a half-size eccentricity term was applied to the satellite clock or to the received signal.
 
-The near-identical residuals are expected rather than surprising. The new term is numerically half of the standard periodic eccentricity correction, and in a pseudorange residual it enters the same way whether it is applied to the satellite clock or to the received signal. The current data therefore cannot distinguish where the half-size eccentricity term belongs — satellite clock rate versus signal frequency — because both placements produce essentially the same predicted pseudoranges. Resolving that question requires better measurements or an independent observable, not receiver residuals alone.
+Configuration C was then dropped in favor of configuration D: the frequency-shift interpretation was removed, and the gravity treatment was simplified to a Newtonian corpuscle whose speed follows conservation of mechanical energy between the satellite and receiver radii. The corpuscle speed effect amounts to only millimetres of range, so results return to near configuration B. The current data therefore cannot resolve where the half-size eccentricity term belongs, and the corpuscle model deliberately does not try to replace it.
 
 Despite their similar residual RMS values, the independently solved CSL and VSL positions differ by approximately `60–70 m` on average. This is possible because the two propagation models predict different satellite ranges, while the least-squares solver can trade position against receiver clock bias. With measurement errors already this large, both models can fit the data almost equally poorly while settling on noticeably different positions. The available data therefore cannot resolve whether that position difference comes from the propagation model or from measurement and modeling error.
 
@@ -176,7 +190,7 @@ The phone fix is not accurate or independent enough to determine which model’s
 ## Limitations
 
 - Pseudoranges are reconstructed using a shared `70 ms` travel-time offset in `src/measurement_parser.py`. The common portion is largely absorbed by receiver clock bias, but large residuals show substantial remaining measurement-model error.
-- The reconstructed phone pseudoranges are the dominant limitation of the current comparison. Their `90–160 m` residual RMS is much larger than the centimetre-scale gravity propagation effect and can conceal meaningful differences between propagation models.
+- The reconstructed phone pseudoranges are the dominant limitation of the current comparison. Their `90–160 m` residual RMS is much larger than the millimetre-scale corpuscle gravity effect and can conceal meaningful differences between propagation models.
 - Atmospheric delay, multipath, handset clock behavior, antenna effects, and other GPS error sources are not modeled comprehensively.
 - The datasets are short recordings from one phone and one location.
 - No surveyed or RTK-grade reference position is available.
@@ -231,6 +245,7 @@ Diagnostic CSV files are written to `output/`.
 - `docs/BALLISTIC_GPS_PLAN.md`: original ballistic-model design
 - `docs/VSL_REFACTOR.md`: CSL/VSL package-separation architecture
 - `docs/notes/corrections.md`: side-by-side correction map
+- `docs/results-history.md`: recovered experiment results and model progression
 - `docs/papers/gps-marmet.md`: Paul Marmet reference text used when considering alternative Earth-rotation interpretations
 - `docs/references/gps-measurment-tools.md`: archived Google GPS Measurement Tools source reference
 - `docs/todo.md`: open investigations

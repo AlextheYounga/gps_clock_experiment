@@ -84,7 +84,6 @@ class WeightedLeastSquaresSolver:
         n = len(obs_debug)
         poly = [d.sat_clock_polynomial_m for d in obs_debug]
         grav_prop = [d.gravity_prop_delta_c_mps for d in obs_debug]
-        grav_signal_shift = [d.gravity_signal_time_shift_s for d in obs_debug]
         frame_rotation = [d.earth_rotation_velocity_magnitude_mps for d in obs_debug]
         transmit_shift = [d.transmit_time_shift_s for d in obs_debug]
         return {
@@ -92,8 +91,6 @@ class WeightedLeastSquaresSolver:
             "clock_poly_abs_m": sum(abs(v) for v in poly) / n,
             "prop_gravity_delta_c_mps": sum(grav_prop) / n,
             "prop_gravity_delta_c_abs_mps": sum(abs(v) for v in grav_prop) / n,
-            "signal_gravity_shift_ns": 1.0e9 * sum(grav_signal_shift) / n,
-            "signal_gravity_shift_abs_ns": 1.0e9 * sum(abs(v) for v in grav_signal_shift) / n,
             "sat_frame_rotation_vel_mps": sum(frame_rotation) / n,
             "transmit_time_shift_ns": 1.0e9 * sum(transmit_shift) / n,
             "transmit_time_shift_abs_ns": 1.0e9 * sum(abs(v) for v in transmit_shift) / n,

@@ -7,9 +7,9 @@ This repository is a receiver-side GPS experiment.
 The project compares two interpretations of the same measurement data:
 
 - `src/csl`: the standard GPS-style constant-speed-light receiver model
-- `src/vsl`: a Newtonian ballistic / emission-theory receiver model
+- `src/vsl`: a ballistic / emission-theory receiver model with a Newtonian-style gravitational treatment of light propagation
 
-The immediate goal is not to redesign GPS as a full satellite system. The goal is to determine how closely a receiver built on VSL / Newtonian logic can reproduce the behavior of the standard CSL receiver when both are fed the same real-world GPS measurements and broadcast navigation data.
+The immediate goal is not to redesign GPS as a full satellite system. The goal is to determine how closely a receiver built on VSL ballistic logic can reproduce the behavior of the standard CSL receiver when both are fed the same real-world GPS measurements and broadcast navigation data.
 
 ## Scope
 
@@ -46,7 +46,7 @@ This side of the repo is the baseline reference.
 
 ### `src/vsl`
 
-`src/vsl` contains the experimental Newtonian / ballistic receiver model.
+`src/vsl` contains the experimental ballistic / emission receiver model with a Newtonian-style gravitational treatment of light propagation.
 
 This side of the repo is intended to evolve independently from CSL wherever the receiver logic depends on physics assumptions, especially in:
 
@@ -80,13 +80,13 @@ We do not want to assume that the speed of an object directly slows its clock ra
 
 This is why the VSL clock interpretation omits the full standard periodic eccentricity clock term.
 
-### 4. Gravity may affect signal propagation and frequency
+### 4. Gravity is a Newtonian-style treatment of light propagation
 
-The VSL model assumes that gravity can affect propagation speed in flight and signal energy/frequency. The gravity-based signal time shift is applied to predicted pseudorange, not satellite clock correction.
+The VSL model treats the emitted signal as a Newtonian corpuscle moving through Earth's gravitational field. Conservation of mechanical energy sets its speed between the satellite and receiver radii: falling light speeds up, rising light slows down. This affects the propagation model only.
 
-Numerically, this shift equals half of the standard periodic eccentricity term, so receiver residuals alone cannot distinguish it from an equivalent clock-side correction. Where the half-size eccentricity term physically belongs is an open experimental question; do not treat the current fit agreement as evidence for either placement.
+The VSL model applies no gravitational clock-rate correction, no photon-frequency or energy correction, and no GR coordinate-speed formulas. The VSL side is therefore not described as a purely Newtonian model: it is a ballistic/emission model that uses a Newtonian-style gravitational treatment of light propagation.
 
-This is not a separate philosophical track from the ballistic interpretation. In this project, both are part of the same Newtonian-style picture: emitted objects propagate physically and can be influenced by gravitational conditions during flight.
+This is not a separate philosophical track from the ballistic interpretation. In this project, both are part of the same picture: emitted objects propagate physically and can be influenced by gravitational conditions during flight.
 
 ## What VSL Rejects
 
@@ -141,7 +141,7 @@ On the VSL side, names should prefer explicit physical meaning.
 Examples:
 
 - `EMISSION_SPEED_MPS`
-- `gravity_adjusted_emission_speed_mps(...)`
+- `effective_light_speed_mps(...)`
 
 If a constant is being used only as a reference conversion factor or initial bootstrap quantity, that should be stated clearly in code and docs so it is not mistaken for a hidden CSL assumption.
 
@@ -151,7 +151,7 @@ The intended package split is:
 
 - `src/`: only model-neutral infrastructure
 - `src/csl/`: standard GPS-style receiver logic
-- `src/vsl/`: Newtonian ballistic receiver logic
+- `src/vsl/`: ballistic/emission receiver logic with a Newtonian-style gravitational treatment of light propagation
 
 `src/` should contain only things that are genuinely safe to share, such as:
 
@@ -179,6 +179,7 @@ The current practical question is:
 - `docs/PROJECT.md`: canonical project definition and scope
 - `docs/VSL_REFACTOR.md`: package-separation and architecture notes
 - `docs/notes/corrections.md`: current correction mapping between CSL and VSL
+- `docs/results-history.md`: verified experiment results and model progression
 - `docs/papers/gps-marmet.md`: Marmet reference text
 - `docs/references/gps-measurment-tools.md`: Original Google GPS source code extracted to Markdown using code2prompt. (Search this cautiously, big file)
 - `docs/todo.md`: corrections and investigations still pending

@@ -17,6 +17,10 @@ flight, so dr depends on dt via receiver rotation and is refined iteratively.
 No standard constant-c propagation assumption is layered on top.
 No Sagnac add-on correction is used: Earth rotation enters only through
 the receiver's physical motion during the flight time.
+
+Gravity is handled as ordinary Newtonian acceleration of the emitted
+corpuscle: conservation of mechanical energy sets the light speed between
+the satellite and receiver radii.
 """
 
 from __future__ import annotations
@@ -32,8 +36,7 @@ from src.vsl.clock import calculate_clock_correction
 from src.vsl.corrections import (
     earth_rotation_velocity_mps,
     ecef_to_inertial_velocity_mps,
-    gravity_adjusted_emission_speed_mps,
-    gravity_signal_time_shift_s,
+    effective_light_speed_mps,
     rotate_ecef_position_forward,
 )
 from src.vsl.orbit import calculate_satellite_state
@@ -74,9 +77,6 @@ class BallisticObsDebug:
 
     gravity_prop_delta_c_mps: float
     """Gravity-induced propagation-speed shift relative to c_emit (m/s)."""
-
-    gravity_signal_time_shift_s: float
-    """Gravity-induced signal frequency/time shift (seconds)."""
 
     transmit_time_shift_s: float
     """Ballistic transmit-time change relative to the pseudorange/c bootstrap."""
@@ -157,7 +157,7 @@ def compute_predicted_pseudorange(  # noqa: PLR0915
 
         sat_radius_m = float(np.linalg.norm(sat_pos))
         rcv_radius_m = float(np.linalg.norm(rcv_at_rx))
-        c_eff = gravity_adjusted_emission_speed_mps(sat_radius_m, rcv_radius_m)
+        c_eff = effective_light_speed_mps(sat_radius_m, rcv_radius_m)
 
         # Ballistic interception quadratic (for fixed dr geometry):
         #   |dr - v_sat * dt|^2 = c_eff^2 * dt^2
@@ -198,7 +198,7 @@ def compute_predicted_pseudorange(  # noqa: PLR0915
     sat_vel_inertial = np.array(ecef_to_inertial_velocity_mps(sat_state.pos_m, sat_state.vel_mps))
     rcv_at_rx = np.array(rotate_ecef_position_forward(user_xyz, flight_time))
     dr = rcv_at_rx - sat_pos
-    c_eff = gravity_adjusted_emission_speed_mps(float(np.linalg.norm(sat_pos)), float(np.linalg.norm(rcv_at_rx)))
+    c_eff = effective_light_speed_mps(float(np.linalg.norm(sat_pos)), float(np.linalg.norm(rcv_at_rx)))
     u_aim = (dr / flight_time - sat_vel_inertial) / c_eff
     u_aim_norm = float(np.linalg.norm(u_aim))
     if u_aim_norm > 0.0:
@@ -211,11 +211,8 @@ def compute_predicted_pseudorange(  # noqa: PLR0915
     # Receiver velocity positive toward satellite means negative along u_aim
     rcv_vel_along_los = -float(np.dot(rcv_vel, u_aim)) if np.any(u_aim) else 0.0
 
-    signal_gravity_shift_s = gravity_signal_time_shift_s(ephemeris, clock_corr.eccentric_anomaly_rad)
-
-    # The gravity frequency shift belongs to the received signal, not the
-    # satellite clock or transmit-time calculation.
-    predicted_pr = flight_time * c_emit - sat_clock_corr_m - signal_gravity_shift_s * c_emit + clock_bias_m
+    # Step 5: predicted pseudorange expressed via c_emit * flight_time
+    predicted_pr = flight_time * c_emit - sat_clock_corr_m + clock_bias_m
 
     gravity_prop_delta_c_mps = c_eff - c_emit
     earth_rotation_velocity_magnitude_mps = float(
@@ -232,7 +229,6 @@ def compute_predicted_pseudorange(  # noqa: PLR0915
         predicted_pseudorange_m=predicted_pr,
         sat_clock_polynomial_m=sat_clock_poly_m,
         gravity_prop_delta_c_mps=gravity_prop_delta_c_mps,
-        gravity_signal_time_shift_s=signal_gravity_shift_s,
         transmit_time_shift_s=bootstrap_flight_time_s - flight_time,
     )
     return predicted_pr, debug

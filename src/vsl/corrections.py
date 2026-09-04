@@ -1,6 +1,6 @@
 """VSL correction terms.
 
-This module isolates correction math used by the VSL clock model so the
+This module isolates correction math used by the VSL model so the
 experimental assumptions can be changed in one place.
 """
 
@@ -86,32 +86,22 @@ def earth_gravitational_potential_m2ps2(radius_m: float) -> float:
     return -MU_M3_S2 / radius_m
 
 
-def gravity_adjusted_emission_speed_mps(
-    sat_radius_m: float,
-    rcv_radius_m: float,
-) -> float:
-    """Return a path-averaged gravity-adjusted emission speed.
+def effective_light_speed_mps(satellite_radius_m: float, receiver_radius_m: float) -> float:
+    """Return the path-averaged light speed from Newtonian energy conservation.
 
-    Experimental propagation model: deeper average potential slightly
-    reduces the signal's effective propagation speed through the Earth's
-    gravity well.
+    Treats the emitted signal as a Newtonian corpuscle fired at
+    EMISSION_SPEED_MPS from the satellite radius and moving through
+    Earth's gravitational field to the receiver radius. Conservation of
+    mechanical energy gives the speed at the receiver:
+
+        v_received = sqrt(c_emit^2 + 2 * (phi_satellite - phi_receiver))
+
+    Falling light speeds up; rising light slows down. The flight-time
+    solver uses the average of the emitted and received speeds.
     """
-    phi_sat = earth_gravitational_potential_m2ps2(sat_radius_m)
-    phi_rcv = earth_gravitational_potential_m2ps2(rcv_radius_m)
-    phi_avg = 0.5 * (phi_sat + phi_rcv)
-    return EMISSION_SPEED_MPS * (1.0 + phi_avg / (EMISSION_SPEED_MPS**2))
-
-
-def gravity_signal_time_shift_s(ephemeris: Ephemeris, eccentric_anomaly_rad: float) -> float:
-    """Return the periodic gravity-induced signal frequency/time shift.
-
-    This is a signal-domain effect derived from the satellite's changing
-    Newtonian gravitational potential, not a satellite clock correction.
-    """
-    semi_major_axis_m = ephemeris.root_a**2
-    return (
-        -math.sqrt(MU_M3_S2 * semi_major_axis_m)
-        * ephemeris.e
-        * math.sin(eccentric_anomaly_rad)
-        / (EMISSION_SPEED_MPS**2)
+    phi_satellite = earth_gravitational_potential_m2ps2(satellite_radius_m)
+    phi_receiver = earth_gravitational_potential_m2ps2(receiver_radius_m)
+    received_light_speed_mps = math.sqrt(
+        EMISSION_SPEED_MPS**2 + 2.0 * (phi_satellite - phi_receiver)
     )
+    return 0.5 * (EMISSION_SPEED_MPS + received_light_speed_mps)

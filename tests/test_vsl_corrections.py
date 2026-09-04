@@ -5,12 +5,11 @@ from __future__ import annotations
 import math
 import unittest
 
-from src.constants import F_RELATIVISTIC, OMEGA_E_DOT_RAD_S
-from src.models import Ephemeris
+from src.constants import OMEGA_E_DOT_RAD_S, SPEED_OF_LIGHT_MPS as EMISSION_SPEED_MPS
 from src.vsl.corrections import (
     earth_rotation_velocity_mps,
     ecef_to_inertial_velocity_mps,
-    gravity_signal_time_shift_s,
+    effective_light_speed_mps,
     rotate_ecef_position_forward,
 )
 
@@ -41,58 +40,25 @@ class VslFrameCorrectionTests(unittest.TestCase):
         self.assertAlmostEqual(rotation_velocity[1], OMEGA_E_DOT_RAD_S * radius_m)
 
 
-class VslGravitySignalCorrectionTests(unittest.TestCase):
-    """Validate the VSL gravity-induced signal frequency/time term."""
+class VslNewtonianGravityLightTests(unittest.TestCase):
+    """Validate the Newtonian corpuscle light-speed model."""
 
-    @staticmethod
-    def _ephemeris(eccentricity: float) -> Ephemeris:
-        return Ephemeris(
-            prn=1,
-            week=0,
-            toc=0.0,
-            toe=0.0,
-            af0=0.0,
-            af1=0.0,
-            af2=0.0,
-            iode=0.0,
-            crs=0.0,
-            delta_n=0.0,
-            m0=0.0,
-            cuc=0.0,
-            e=eccentricity,
-            cus=0.0,
-            root_a=math.sqrt(26_560_000.0),
-            cic=0.0,
-            omega0=0.0,
-            cis=0.0,
-            i0=0.0,
-            crc=0.0,
-            omega=0.0,
-            omega_dot=0.0,
-            i_dot=0.0,
-            tgd=0.0,
-            iodc=0.0,
-        )
+    def test_falling_light_speeds_up_and_rising_light_slows_down(self) -> None:
+        satellite_radius_m = 26_560_000.0
+        receiver_radius_m = 6_371_000.0
 
-    def test_gravity_signal_time_shift_is_zero_for_circular_orbit(self) -> None:
-        shift_s = gravity_signal_time_shift_s(self._ephemeris(0.0), math.pi / 2.0)
+        falling_mps = effective_light_speed_mps(satellite_radius_m, receiver_radius_m)
+        rising_mps = effective_light_speed_mps(receiver_radius_m, satellite_radius_m)
 
-        self.assertEqual(shift_s, 0.0)
+        self.assertGreater(falling_mps, EMISSION_SPEED_MPS)
+        self.assertLess(rising_mps, EMISSION_SPEED_MPS)
 
-    def test_gravity_signal_time_shift_matches_half_standard_eccentricity_term(self) -> None:
-        ephemeris = self._ephemeris(0.01)
-        eccentric_anomaly_rad = 0.8
+    def test_equal_radii_give_the_emission_speed(self) -> None:
+        radius_m = 26_560_000.0
 
-        shift_s = gravity_signal_time_shift_s(ephemeris, eccentric_anomaly_rad)
-        half_standard_term_s = (
-            0.5
-            * F_RELATIVISTIC
-            * ephemeris.e
-            * ephemeris.root_a
-            * math.sin(eccentric_anomaly_rad)
-        )
+        speed_mps = effective_light_speed_mps(radius_m, radius_m)
 
-        self.assertAlmostEqual(shift_s, half_standard_term_s, places=15)
+        self.assertEqual(speed_mps, EMISSION_SPEED_MPS)
 
 
 if __name__ == "__main__":
