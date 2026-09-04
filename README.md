@@ -96,16 +96,16 @@ The current datasets show an average satellite frame-rotation vector magnitude o
 
 Both models retain the broadcast polynomial clock terms because the experiment consumes data from the existing GPS satellite system.
 
-They differ in their periodic eccentricity correction:
+They differ in their periodic eccentricity clock treatment:
 
 | Model | Periodic clock treatment |
 | --- | --- |
 | CSL | Uses the full standard term `F * e * sqrt(A) * sin(E)`, conventionally interpreted as the combined gravitational-potential and orbital-speed effect. |
-| VSL | Uses half of the standard term as an experimental gravity-only clock effect and omits the speed-dependent half. |
+| VSL | Applies no independent periodic eccentricity clock correction. |
 
-The VSL clock choice is a hybrid hypothesis: gravitational potential is allowed to affect clock rate, while velocity itself is not assumed to slow a clock.
+The VSL clock choice is the strict Newtonian baseline for this experiment: broadcast polynomial terms remain as empirical satellite-clock calibration inputs, while eccentricity affects the Keplerian orbit, satellite velocity, and ballistic propagation but does not directly alter the clock rate. The experimental gravity-on-propagation assumption remains separate from the clock model.
 
-The large mean satellite clock-rate offset is handled operationally by the GPS space and control segments. This receiver experiment applies the broadcast clock products and models only the periodic eccentricity difference explicitly.
+The large mean satellite clock-rate offset is handled operationally by the GPS space and control segments. This receiver experiment applies the broadcast clock products without adding a VSL-specific periodic eccentricity clock term.
 
 ## Gravity And Signal Propagation
 
@@ -142,16 +142,16 @@ Generated reports include:
 
 ## Current Results
 
-These results were generated after making the VSL coordinate frame internally consistent and correcting dataset 2 to GPS week `1911`.
+These results were generated after making the VSL coordinate frame internally consistent, correcting dataset 2 to GPS week `1911`, and removing the VSL periodic eccentricity clock term.
 
 | Dataset | CSL mean RMS | VSL mean RMS | Mean VSL-CSL RMS on shared epochs | Shared epochs | VSL worse epochs |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| 2016-06-30 | `157.837 m` | `158.828 m` | `+1.009 m` | 220 | 149 |
-| 2016-08-22 | `92.662 m` | `97.861 m` | `+5.381 m` | 199 | 140 |
+| 2016-06-30 | `157.837 m` | `160.538 m` | `+2.714 m` | 222 | 206 |
+| 2016-08-22 | `92.662 m` | `99.287 m` | `+6.622 m` | 197 | 150 |
 
 Lower residual RMS indicates a closer fit to the pseudorange measurements. Both datasets currently favor CSL, although the size and quality of the datasets do not support a decisive physical conclusion.
 
-The RMS gap is small compared with the absolute residuals: VSL is about `0.57%` worse than CSL on the first dataset and `6.85%` worse on the second. This is a relative fit-quality comparison, not a percentage difference between the solved positions. Both models are fitting noisy measurements with residuals of roughly `90–160 m` RMS.
+The RMS gap is small compared with the absolute residuals: VSL is about `1.72%` worse than CSL on the first dataset and `7.15%` worse on the second. Removing the VSL periodic eccentricity clock term therefore changes the results modestly, but does not change the overall conclusion. This is a relative fit-quality comparison, not a percentage difference between the solved positions. Both models are fitting noisy measurements with residuals of roughly `90–160 m` RMS.
 
 Despite their similar residual RMS values, the independently solved CSL and VSL positions differ by approximately `60–70 m` on average. This is possible because the two propagation models predict different satellite ranges, while the least-squares solver can trade position against receiver clock bias. With measurement errors already this large, both models can fit the data almost equally poorly while settling on noticeably different positions. The available data therefore cannot resolve whether that position difference comes from the propagation model or from measurement and modeling error.
 

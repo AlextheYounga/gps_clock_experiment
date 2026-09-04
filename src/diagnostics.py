@@ -237,7 +237,6 @@ def print_comparison(  # noqa: PLR0912
     correction_rows = [
         ("clock_poly_m", "clock_poly_abs_m", "Clock Polynomial", "m"),
         ("clock_rel_ecc_m", "clock_rel_ecc_abs_m", "Clock Rel Eccentricity", "m"),
-        ("clock_grav_periodic_m", "clock_grav_periodic_abs_m", "Clock Gravity Periodic", "m"),
         ("sagnac_equiv_m", "sagnac_equiv_abs_m", "Sagnac Equivalent", "m"),
         ("prop_gravity_delta_c_mps", "prop_gravity_delta_c_abs_mps", "Propagation Gravity dC", "m/s"),
         ("sat_frame_rotation_vel_mps", None, "Satellite Frame Rotation", "m/s"),

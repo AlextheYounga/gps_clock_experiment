@@ -71,9 +71,6 @@ class BallisticObsDebug:
     sat_clock_polynomial_m: float
     """Broadcast polynomial satellite clock correction component (m)."""
 
-    sat_clock_gravity_periodic_m: float
-    """Gravity-only periodic eccentricity clock correction component (m)."""
-
     gravity_prop_delta_c_mps: float
     """Gravity-induced propagation-speed shift relative to c_emit (m/s)."""
 
@@ -128,7 +125,6 @@ def compute_predicted_pseudorange(  # noqa: PLR0915
     u_aim = np.zeros(3)
     sat_clock_corr_m = 0.0
     sat_clock_poly_m = 0.0
-    sat_clock_gravity_periodic_m = 0.0
     sat_pos = np.zeros(3)
     sat_vel_ecef = np.zeros(3)
     sat_vel_inertial = np.zeros(3)
@@ -140,7 +136,6 @@ def compute_predicted_pseudorange(  # noqa: PLR0915
         clock_corr = calculate_clock_correction(ephemeris, tow_tx, tx_week)
         sat_clock_corr_m = clock_corr.satellite_clock_correction_m
         sat_clock_poly_m = clock_corr.polynomial_correction_s * c_emit
-        sat_clock_gravity_periodic_m = clock_corr.gravity_periodic_correction_s * c_emit
         corrected_tx, corrected_week = _add_clock_correction(
             tow_tx,
             tx_week,
@@ -192,7 +187,6 @@ def compute_predicted_pseudorange(  # noqa: PLR0915
     clock_corr = calculate_clock_correction(ephemeris, tow_tx, tx_week)
     sat_clock_corr_m = clock_corr.satellite_clock_correction_m
     sat_clock_poly_m = clock_corr.polynomial_correction_s * c_emit
-    sat_clock_gravity_periodic_m = clock_corr.gravity_periodic_correction_s * c_emit
     corrected_tx, corrected_week = _add_clock_correction(tow_tx, tx_week, sat_clock_corr_m / c_emit)
     sat_state = calculate_satellite_state(ephemeris, corrected_tx, corrected_week)
     sat_pos = np.array(sat_state.pos_m)
@@ -230,7 +224,6 @@ def compute_predicted_pseudorange(  # noqa: PLR0915
         rcv_vel_along_los_mps=rcv_vel_along_los,
         predicted_pseudorange_m=predicted_pr,
         sat_clock_polynomial_m=sat_clock_poly_m,
-        sat_clock_gravity_periodic_m=sat_clock_gravity_periodic_m,
         gravity_prop_delta_c_mps=gravity_prop_delta_c_mps,
         transmit_time_shift_s=bootstrap_flight_time_s - flight_time,
     )

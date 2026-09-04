@@ -1,12 +1,9 @@
 """VSL satellite clock correction.
 
-The VSL model uses the ICD polynomial clock terms (af0, af1, af2, tgd)
-and an experimental gravity-only periodic eccentricity correction.
-
-This keeps the gravitational half of the standard broadcast periodic
-clock term while intentionally omitting the speed-dependent half. The
-goal is to test a hybrid model where gravity affects clock rate but
-orbital speed does not.
+The VSL model uses the broadcast polynomial clock terms (af0, af1, af2,
+tgd) and does not apply an independent eccentricity-dependent clock term.
+Eccentricity remains in the Keplerian orbit and therefore affects satellite
+position, velocity, and ballistic propagation.
 
 This module remains separate from the CSL clock module so the VSL clock
 assumptions stay explicit and self-contained.
@@ -19,7 +16,7 @@ from dataclasses import dataclass
 
 from src.constants import MU_M3_S2, SECONDS_IN_WEEK, SPEED_OF_LIGHT_MPS as EMISSION_SPEED_MPS
 from src.models import Ephemeris
-from src.vsl.corrections import gravity_only_periodic_eccentricity_correction_s, polynomial_clock_correction_s
+from src.vsl.corrections import polynomial_clock_correction_s
 
 _ACCURACY_TOLERANCE = 1.0e-11
 _MAX_ITERATIONS = 100
@@ -27,13 +24,12 @@ _MAX_ITERATIONS = 100
 
 @dataclass(frozen=True)
 class SatClockCorrection:
-    """VSL satellite clock correction with gravity-only periodic term."""
+    """VSL satellite clock correction using broadcast polynomial terms."""
 
     satellite_clock_correction_m: float
     eccentric_anomaly_rad: float
     time_from_ref_epoch_s: float
     polynomial_correction_s: float
-    gravity_periodic_correction_s: float
 
 
 def _fix_week_rollover(time_s: float) -> float:
@@ -50,7 +46,7 @@ def calculate_clock_correction(
     receiver_gps_tow_at_transmission_s: float,
     receiver_gps_week_at_transmission: int,
 ) -> SatClockCorrection:
-    """Compute VSL satellite clock correction with gravity-only periodic term."""
+    """Compute VSL satellite clock correction without a periodic clock term."""
     a = ephemeris.root_a * ephemeris.root_a
     n0 = math.sqrt(MU_M3_S2 / (a * a * a))
     n = n0 + ephemeris.delta_n
@@ -80,11 +76,9 @@ def calculate_clock_correction(
             if abs(old - ecc_anom) <= _ACCURACY_TOLERANCE:
                 break
 
-        # Experimental hybrid clock model: keep only the gravitational half
-        # of the standard periodic eccentricity correction and omit the
-        # speed-dependent half.
-        grav_only_corr_s = gravity_only_periodic_eccentricity_correction_s(ephemeris, ecc_anom)
-        new_corr_s = init_corr_s + grav_only_corr_s
+        # Strict Newtonian clock model: eccentricity affects the orbit, not
+        # the clock correction. Only broadcast calibration terms are applied.
+        new_corr_s = init_corr_s
         change = abs(sat_corr_s - new_corr_s)
         sat_corr_s = new_corr_s
 
@@ -100,5 +94,4 @@ def calculate_clock_correction(
         eccentric_anomaly_rad=ecc_anom,
         time_from_ref_epoch_s=tk_s,
         polynomial_correction_s=init_corr_s,
-        gravity_periodic_correction_s=grav_only_corr_s,
     )

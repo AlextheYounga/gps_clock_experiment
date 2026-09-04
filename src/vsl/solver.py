@@ -83,15 +83,12 @@ class WeightedLeastSquaresSolver:
             return {}
         n = len(obs_debug)
         poly = [d.sat_clock_polynomial_m for d in obs_debug]
-        grav_clock = [d.sat_clock_gravity_periodic_m for d in obs_debug]
         grav_prop = [d.gravity_prop_delta_c_mps for d in obs_debug]
         frame_rotation = [d.earth_rotation_velocity_magnitude_mps for d in obs_debug]
         transmit_shift = [d.transmit_time_shift_s for d in obs_debug]
         return {
             "clock_poly_m": sum(poly) / n,
             "clock_poly_abs_m": sum(abs(v) for v in poly) / n,
-            "clock_grav_periodic_m": sum(grav_clock) / n,
-            "clock_grav_periodic_abs_m": sum(abs(v) for v in grav_clock) / n,
             "prop_gravity_delta_c_mps": sum(grav_prop) / n,
             "prop_gravity_delta_c_abs_mps": sum(abs(v) for v in grav_prop) / n,
             "sat_frame_rotation_vel_mps": sum(frame_rotation) / n,
