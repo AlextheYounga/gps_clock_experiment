@@ -26,7 +26,7 @@ Both receivers use weighted least squares to find the position and clock bias th
 
 ### Constant-Speed-Light Model
 
-The CSL implementation in `src/csl/` follows conventional GPS receiver equations derived from the Google GPS Measurement Tools implementation.
+The CSL implementation in `src/csl/` follows conventional GPS receiver equations derived from the [Google GPS Measurement Tools](https://github.com/google/gps-measurement-tools) implementation.
 
 Its predicted pseudorange is based on geometric distance divided by the conventional constant speed of light. It includes:
 
