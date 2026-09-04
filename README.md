@@ -9,7 +9,7 @@ The project asks a limited, testable question: can the experimental VSL receiver
 
 This is a numerical experiment, not proof of either physical theory. Its results are constrained by the quality of the recorded phone measurements, the assumptions described below, and the small number of available datasets.
 
-The historical progression of model variants and their measured results is recorded in [`docs/results-history.md`](docs/results-history.md).
+The historical progression of model variants and their measured results is recorded in [`docs/notes/results-history.md`](docs/notes/results-history.md).
 
 ## GPS Receiver Basics
 
@@ -242,10 +242,7 @@ Diagnostic CSV files are written to `output/`.
 ## Further Documentation
 
 - `docs/PROJECT.md`: detailed project scope and assumptions
-- `docs/BALLISTIC_GPS_PLAN.md`: original ballistic-model design
-- `docs/VSL_REFACTOR.md`: CSL/VSL package-separation architecture
 - `docs/notes/corrections.md`: side-by-side correction map
-- `docs/results-history.md`: recovered experiment results and model progression
+- `docs/notes/results-history.md`: recovered experiment results and model progression
 - `docs/papers/gps-marmet.md`: Paul Marmet reference text used when considering alternative Earth-rotation interpretations
 - `docs/references/gps-measurment-tools.md`: archived Google GPS Measurement Tools source reference
-- `docs/todo.md`: open investigations

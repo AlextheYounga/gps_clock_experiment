@@ -37,12 +37,17 @@ periodic eccentricity term and the later Newtonian-style propagation model.
 
 1. Configuration A used the original VSL hybrid: half of the standard
    periodic eccentricity term was treated as a gravity-only clock effect.
+   This was not a pure Newtonian interpretation and kept the GR gravity
+   effect on clock time, so it was abandoned.
 2. Configuration B removed the periodic term from the VSL clock entirely.
    Fit quality worsened by approximately `1.7 m` and `1.2 m` of RMS delta.
+   This configuration did not apply Newtonian, ballistic theory corrections to
+   light, so it was abandoned.
 3. Configuration C restored the same numerical term as a signal-domain
    frequency/time shift instead of a clock correction. Its results returned
    close to configuration A, showing that receiver pseudorange residuals
-   cannot distinguish those two placements.
+   cannot distinguish those two placements, but this was not a pure Newtonian
+   implementation, so it was abandoned.
 4. Configuration D removed the signal-domain term and replaced the former
    path-average speed formula with Newtonian-style corpuscle propagation.
    Conservation of mechanical energy makes falling light slightly faster;
