@@ -151,11 +151,16 @@ These results were generated after making the VSL coordinate frame internally co
 
 Lower residual RMS indicates a closer fit to the pseudorange measurements. Both datasets currently favor CSL, although the size and quality of the datasets do not support a decisive physical conclusion.
 
-The models still produce broadly comparable positions, but model-to-model differences are tens of metres. The phone fix is not accurate or independent enough to determine which model’s position is closer to physical truth.
+The RMS gap is small compared with the absolute residuals: VSL is about `0.57%` worse than CSL on the first dataset and `6.85%` worse on the second. This is a relative fit-quality comparison, not a percentage difference between the solved positions. Both models are fitting noisy measurements with residuals of roughly `90–160 m` RMS.
+
+Despite their similar residual RMS values, the independently solved CSL and VSL positions differ by approximately `60–70 m` on average. This is possible because the two propagation models predict different satellite ranges, while the least-squares solver can trade position against receiver clock bias. With measurement errors already this large, both models can fit the data almost equally poorly while settling on noticeably different positions. The available data therefore cannot resolve whether that position difference comes from the propagation model or from measurement and modeling error.
+
+The phone fix is not accurate or independent enough to determine which model’s position is closer to physical truth.
 
 ## Limitations
 
 - Pseudoranges are reconstructed using a shared `70 ms` travel-time offset in `src/measurement_parser.py`. The common portion is largely absorbed by receiver clock bias, but large residuals show substantial remaining measurement-model error.
+- The reconstructed phone pseudoranges are the dominant limitation of the current comparison. Their `90–160 m` residual RMS is much larger than the centimetre-scale gravity propagation effect and can conceal meaningful differences between propagation models.
 - Atmospheric delay, multipath, handset clock behavior, antenna effects, and other GPS error sources are not modeled comprehensively.
 - The datasets are short recordings from one phone and one location.
 - No surveyed or RTK-grade reference position is available.
